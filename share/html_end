@@ -1,3 +1,6 @@
 </div>
+<script type="text/javascript">//<![CDATA[
+	const lightbox = GLightbox();
+//]]></script>
 </body>
 </html>

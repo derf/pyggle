@@ -4,15 +4,9 @@
 	<title><!-- $title --></title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<script type="text/javascript" src=".data/js/jquery-1.10.2.min.js"></script>
-	<script type="text/javascript" src=".data/js/jquery.mousewheel-3.0.6.pack.js"></script>
-	<script type="text/javascript" src=".data/js/jquery.fancybox.pack.js"></script>
-	<link rel="stylesheet" type="text/css" href=".data/css/jquery.fancybox.css" media="screen" />
 	<link rel="stylesheet" type="text/css" href=".data/css/main.css"/>
-	<script type="text/javascript">//<![CDATA[
-		$(document).ready(function() {
-			$('.fancybox').fancybox();
-		});
-	//]]</script>
+	<!-- glightbox (C) biati digital, MIT licensed. <https://biati-digital.github.io/glightbox/> -->
+	<link rel="stylesheet" href=".data/css/glightbox.min.css" />
+	<script src=".data/js/glightbox.min.js"></script>
 </head>
 <body><div>

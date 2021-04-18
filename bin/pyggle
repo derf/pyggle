@@ -134,20 +134,8 @@ def copy_files(base_dir):
     imgwidth = f"{conf_size}px"
     imgheight = f"{conf_size}px"
 
-    css_files = ("jquery.fancybox.css",)
-    css_files += (
-        "blank.gif",
-        "fancybox_loading@2x.gif",
-        "fancybox_loading.gif",
-        "fancybox_overlay.png",
-        "fancybox_sprite@2x.png",
-        "fancybox_sprite.png",
-    )
-    js_files = (
-        "jquery-1.10.2.min.js",
-        "jquery.fancybox.pack.js",
-        "jquery.mousewheel-3.0.6.pack.js",
-    )
+    css_files = ["glightbox.min.css"]
+    js_files = ["glightbox.min.js"]
 
     for css_file in css_files:
         shutil.copy(f"{base_dir}/css/{css_file}", f".data/css/{css_file}")
@@ -168,20 +156,11 @@ def copy_files(base_dir):
 
 
 def create_thumbnail_html(filename, title):
-    conf_size = 250
-    conf_spacing = 1.1
-
-    div_width = conf_size * conf_spacing
-    div_height = div_width + 10
-
     buf = """<div class="image-container">\n"""
-
-    buf += f"""\t<a class="fancybox" href="{filename}" title="{title}" data-fancybox-group="gallery">\n"""
-    buf += f"""\t\t<img src=".thumbnails/{filename}" alt="{filename}" /></a>\n"""
-
-    buf += f"""\t<br/>\n\t<a style="text-decoration: none;" href="{filename}">{filename}</a>\n"""
-
-    buf += "</div>\n"
+    buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description="{title}">"""
+    buf += f"""<img src=".thumbnails/{filename}" alt="{filename}" />"""
+    buf += "</a>"
+    buf += "</div>"
 
     return buf
 
