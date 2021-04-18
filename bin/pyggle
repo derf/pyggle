@@ -169,9 +169,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__
     )
-    parser.add_argument("--header-include", metavar="FILE", type=str, help="file with HTML to include before thumbnail list")
+    parser.add_argument(
+        "--html-include",
+        metavar="FILE",
+        type=str,
+        help="file with HTML to include before thumbnail list",
+    )
     parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
-    parser.add_argument("--spacing", type=float, default=1.1, help="Thumbnail spacing ratio")
+    parser.add_argument(
+        "--spacing", type=float, default=1.1, help="Thumbnail spacing ratio"
+    )
+    parser.add_argument("--title", type=str, help="HTML title", default="")
     parser.add_argument("images", type=str, nargs="+")
 
     args = parser.parse_args()
@@ -181,10 +189,10 @@ if __name__ == "__main__":
     copy_files(f"{base_dir}/share")
 
     with open(f"{base_dir}/share/html_start", "r") as f:
-        html_buf = f.read()
+        html_buf = f.read().replace("<!-- $title -->", args.title)
 
-    if args.header_include:
-        with open(args.header_include, "r") as f:
+    if args.html_include:
+        with open(args.html_include, "r") as f:
             html_buf += f.read()
 
     filenames = args.images
