@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # vim:tabstop=4 softtabstop=4 shiftwidth=4 textwidth=160 smarttab expandtab colorcolumn=160
 
+import argparse
 from datetime import datetime
 import exifread
 import os
@@ -127,12 +128,10 @@ def copy_files(base_dir):
     for directory in ".data/css .data/js .thumbnails".split():
         os.makedirs(directory, exist_ok=True)
 
-    conf_size = 250
-    conf_spacing = 1.1
-    boxwidth = f"{conf_size * conf_spacing}px"
-    boxheight = f"{conf_size * conf_spacing}px"
-    imgwidth = f"{conf_size}px"
-    imgheight = f"{conf_size}px"
+    boxwidth = f"{args.size * args.spacing}px"
+    boxheight = f"{args.size * args.spacing}px"
+    imgwidth = f"{args.size}px"
+    imgheight = f"{args.size}px"
 
     css_files = ["glightbox.min.css"]
     js_files = ["glightbox.min.js"]
@@ -167,6 +166,16 @@ def create_thumbnail_html(filename, title):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__
+    )
+    parser.add_argument("--header-include", metavar="FILE", type=str, help="file with HTML to include before thumbnail list")
+    parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
+    parser.add_argument("--spacing", type=float, default=1.1, help="Thumbnail spacing ratio")
+    parser.add_argument("images", type=str, nargs="+")
+
+    args = parser.parse_args()
+
     base_dir = "/".join(os.path.realpath(sys.argv[0]).split("/")[:-2])
 
     copy_files(f"{base_dir}/share")
@@ -174,7 +183,11 @@ if __name__ == "__main__":
     with open(f"{base_dir}/share/html_start", "r") as f:
         html_buf = f.read()
 
-    filenames = sys.argv[1:]
+    if args.header_include:
+        with open(args.header_include, "r") as f:
+            html_buf += f.read()
+
+    filenames = args.images
 
     for filename in ProgressBar(max=len(filenames)).iter(filenames):
         with open(filename, "rb") as f:
@@ -187,7 +200,7 @@ if __name__ == "__main__":
 
         im = rotate_image(im, exif_tag)
 
-        im.thumbnail((500, 500))
+        im.thumbnail((args.size * 2, args.size * 2))
         im.save(f".thumbnails/{filename}", "JPEG")
 
         html_buf += create_thumbnail_html(filename, format_exif(exif_tag))
