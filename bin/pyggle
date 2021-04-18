@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+# vim:tabstop=4 softtabstop=4 shiftwidth=4 textwidth=160 smarttab expandtab colorcolumn=160
+
+from datetime import datetime
+import exifread
+import os
+import PIL
+from PIL import Image
+import shutil
+import sys
+
+
+def rotate_image(image, exif_tag):
+    if "Image Orientation" not in exif_tag:
+        return image
+
+    orientation = exif_tag["Image Orientation"].values
+
+    if 3 in orientation:
+        image = image.transpose(Image.ROTATE_180)
+    if 6 in orientation:
+        image = image.transpose(Image.ROTATE_270)
+    if 8 in orientation:
+        image = image.transpose(Image.ROTATE_90)
+
+    return image
+
+
+def format_f(value, precision=1):
+    if value % 1 == 0:
+        return f"{value:.0f}"
+    return f"{value:.{precision}f}"
+
+
+def format_fsi(exif_tag):
+    entries = list()
+
+    try:
+        f_num = float(exif_tag["EXIF FNumber"].values[0])
+        entries.append(f"f/{format_f(f_num)}")
+    except (KeyError, ZeroDivisionError):
+        pass
+
+    try:
+        shutter = float(exif_tag["EXIF ShutterSpeedValue"].values[0])
+        entries.append(f"1/{format_f(shutter)}s")
+    except (KeyError, ZeroDivisionError):
+        pass
+
+    try:
+        iso = exif_tag["EXIF ISOSpeedRatings"].values[0]
+        entries.append(f"ISO{iso}")
+    except KeyError:
+        pass
+
+    try:
+        focal_length = float(exif_tag["EXIF FocalLength"].values[0])
+        entries.append(f"{format_f(focal_length)}mm")
+        try:
+            focal_length35 = float(exif_tag["EXIF FocalLengthIn35mmFilm"].values[0])
+            entries.append(f"(≙ {format_f(focal_length35)}mm)")
+        except (KeyError, ZeroDivisionError):
+            pass
+    except (KeyError, ZeroDivisionError):
+        pass
+
+    return " ".join(entries)
+
+
+def format_make_model_lens(exif_tag):
+    try:
+        make = exif_tag["Image Make"].values
+        model = exif_tag["Image Model"].values
+    except KeyError:
+        return None
+
+    if model.startswith(make):
+        model = model[len(make) :]
+        if model[0] == " ":
+            model = model[1:]
+
+    try:
+        lens = exif_tag["EXIF LensModel"]
+        if lens:
+            model += f" + {lens}"
+    except KeyError:
+        # Unknown or built-in lens
+        pass
+
+    return f"{make} {model}"
+
+
+def format_exif(exif_tag):
+    exif_lines = list()
+    # print(exif_tag)
+
+    try:
+        dt = datetime.strptime(
+            exif_tag["EXIF DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
+        )
+        exif_lines.append(dt.strftime("%d.%m.%Y %H:%M"))
+    except (KeyError, ValueError):
+        try:
+            dt = datetime.strptime(
+                exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
+            )
+            exif_lines.append(dt.strftime("%d.%m.%Y %H:%M"))
+        except (KeyError, ValueError):
+            pass
+
+    exif_lines.append(format_make_model_lens(exif_tag))
+    exif_lines.append(format_fsi(exif_tag))
+
+    return " • ".join(filter(bool, exif_lines))
+
+
+def copy_files(base_dir):
+    for directory in ".data/css .data/js .thumbnails".split():
+        os.makedirs(directory, exist_ok=True)
+
+    conf_size = 250
+    conf_spacing = 1.1
+    boxwidth = f"{conf_size * conf_spacing}px"
+    boxheight = f"{conf_size * conf_spacing}px"
+    imgwidth = f"{conf_size}px"
+    imgheight = f"{conf_size}px"
+
+    css_files = ("jquery.fancybox.css",)
+    css_files += (
+        "blank.gif",
+        "fancybox_loading@2x.gif",
+        "fancybox_loading.gif",
+        "fancybox_overlay.png",
+        "fancybox_sprite@2x.png",
+        "fancybox_sprite.png",
+    )
+    js_files = (
+        "jquery-1.10.2.min.js",
+        "jquery.fancybox.pack.js",
+        "jquery.mousewheel-3.0.6.pack.js",
+    )
+
+    for css_file in css_files:
+        shutil.copy(f"{base_dir}/css/{css_file}", f".data/css/{css_file}")
+
+    for js_file in js_files:
+        shutil.copy(f"{base_dir}/js/{js_file}", f".data/js/{js_file}")
+
+    with open(f"{base_dir}/css/main.css", "r") as f:
+        main_css = f.read()
+
+    main_css = main_css.replace("/* $boxwidth */", boxwidth)
+    main_css = main_css.replace("/* $boxheight */", boxheight)
+    main_css = main_css.replace("/* $imgwidth */", imgwidth)
+    main_css = main_css.replace("/* $imgheight */", imgheight)
+
+    with open(".data/css/main.css", "w") as f:
+        f.write(main_css)
+
+
+def create_thumbnail_html(filename, title):
+    conf_size = 250
+    conf_spacing = 1.1
+
+    div_width = conf_size * conf_spacing
+    div_height = div_width + 10
+
+    buf = """<div class="image-container">\n"""
+
+    buf += f"""\t<a class="fancybox" href="{filename}" title="{title}" data-fancybox-group="gallery">\n"""
+    buf += f"""\t\t<img src=".thumbnails/{filename}" alt="{filename}" /></a>\n"""
+
+    buf += f"""\t<br/>\n\t<a style="text-decoration: none;" href="{filename}">{filename}</a>\n"""
+
+    buf += "</div>\n"
+
+    return buf
+
+
+if __name__ == "__main__":
+
+    base_dir = "/".join(os.path.realpath(sys.argv[0]).split("/")[:-2])
+
+    copy_files(f"{base_dir}/share")
+
+    with open(f"{base_dir}/share/html_start", "r") as f:
+        html_buf = f.read()
+
+    for filename in sys.argv[1:]:
+        with open(filename, "rb") as f:
+            exif_tag = exifread.process_file(f)
+
+        try:
+            im = Image.open(filename)
+        except PIL.UnidentifiedImageError:
+            continue
+
+        im = rotate_image(im, exif_tag)
+
+        im.thumbnail((500, 500))
+        im.save(f".thumbnails/{filename}", "JPEG")
+
+        html_buf += create_thumbnail_html(filename, format_exif(exif_tag))
+
+    with open(f"{base_dir}/share/html_end", "r") as f:
+        html_buf += f.read()
+
+    with open("index.html", "w") as f:
+        f.write(html_buf)

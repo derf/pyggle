@@ -1,0 +1,16 @@
+div.image-container {
+	text-align: center;
+	font-size: 80%;
+	float: left;
+	width: /* $boxwidth */;
+	height: /* $boxheight */;
+}
+
+div.image-container a {
+	text-decoration: none;
+}
+
+div.image-container img {
+	max-width: /* $imgwidth */;
+	max-height: /* $imgheight */;
+}
