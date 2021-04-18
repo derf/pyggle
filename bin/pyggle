@@ -6,8 +6,13 @@ import exifread
 import os
 import PIL
 from PIL import Image
+from progress.bar import Bar
 import shutil
 import sys
+
+
+class ProgressBar(Bar):
+    suffix = "%(percent).0f%% [%(elapsed_td)s/%(eta_td)s]"
 
 
 def rotate_image(image, exif_tag):
@@ -42,8 +47,13 @@ def format_fsi(exif_tag):
         pass
 
     try:
-        shutter = float(exif_tag["EXIF ShutterSpeedValue"].values[0])
-        entries.append(f"1/{format_f(shutter)}s")
+        exposure = float(exif_tag["EXIF ExposureTime"].values[0])
+        if exposure >= 1:
+            entries.append(f"{format_f(exposure)}s")
+        elif exposure >= 1e-3:
+            entries.append(f"{format_f(exposure * 1e3)}ms")
+        else:
+            entries.append(f"{format_f(exposure * 1e6)}µs")
     except (KeyError, ZeroDivisionError):
         pass
 
@@ -92,7 +102,6 @@ def format_make_model_lens(exif_tag):
 
 def format_exif(exif_tag):
     exif_lines = list()
-    # print(exif_tag)
 
     try:
         dt = datetime.strptime(
@@ -186,7 +195,9 @@ if __name__ == "__main__":
     with open(f"{base_dir}/share/html_start", "r") as f:
         html_buf = f.read()
 
-    for filename in sys.argv[1:]:
+    filenames = sys.argv[1:]
+
+    for filename in ProgressBar(max=len(filenames)).iter(filenames):
         with open(filename, "rb") as f:
             exif_tag = exifread.process_file(f)
 
