@@ -2,6 +2,10 @@ body {
 	font-family: Sans-Serif;
 }
 
+a {
+	text-decoration: none;
+}
+
 div.image-container {
 	text-align: center;
 	font-size: 80%;
@@ -17,4 +21,14 @@ div.image-container a {
 div.image-container img {
 	max-width: /* $imgwidth */;
 	max-height: /* $imgheight */;
+}
+
+.gslide-desc p span {
+	padding-left: 0.2em;
+	padding-right: 0.2em;
+}
+
+.gslide-desc p span.sep {
+	padding-left: 0.4em;
+	padding-right: 0.4em;
 }

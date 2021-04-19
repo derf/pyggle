@@ -43,36 +43,41 @@ def format_fsi(exif_tag):
 
     try:
         f_num = float(exif_tag["EXIF FNumber"].values[0])
-        entries.append(f"f/{format_f(f_num)}")
+        entries.append(f"""<span class="fnumber">f/{format_f(f_num)}</span>""")
     except (KeyError, ZeroDivisionError):
         pass
 
     try:
         exposure = float(exif_tag["EXIF ExposureTime"].values[0])
         if exposure >= 1:
-            entries.append(f"{format_f(exposure)}s")
+            entries.append(f"""<span class="exposure">{format_f(exposure)}s</span>""")
         elif exposure >= 1e-3:
-            entries.append(f"{format_f(exposure * 1e3)}ms")
+            entries.append(
+                f"""<span class="exposure">{format_f(exposure * 1e3)}ms</span>"""
+            )
         else:
-            entries.append(f"{format_f(exposure * 1e6)}µs")
+            entries.append(
+                f"""<span class="exposure">{format_f(exposure * 1e6)}µs</span>"""
+            )
+    except (KeyError, ZeroDivisionError):
+        pass
+
+    try:
+        focal_length = float(exif_tag["EXIF FocalLength"].values[0])
+        entry = f"{format_f(focal_length)}mm"
+        try:
+            focal_length35 = float(exif_tag["EXIF FocalLengthIn35mmFilm"].values[0])
+            entry += f" (≙ {format_f(focal_length35)}mm)"
+        except (KeyError, ZeroDivisionError):
+            pass
+        entries.append(f"""<span class="focal">{entry}</span>""")
     except (KeyError, ZeroDivisionError):
         pass
 
     try:
         iso = exif_tag["EXIF ISOSpeedRatings"].values[0]
-        entries.append(f"ISO{iso}")
+        entries.append(f"""<span class="iso">ISO{iso}</span>""")
     except KeyError:
-        pass
-
-    try:
-        focal_length = float(exif_tag["EXIF FocalLength"].values[0])
-        entries.append(f"{format_f(focal_length)}mm")
-        try:
-            focal_length35 = float(exif_tag["EXIF FocalLengthIn35mmFilm"].values[0])
-            entries.append(f"(≙ {format_f(focal_length35)}mm)")
-        except (KeyError, ZeroDivisionError):
-            pass
-    except (KeyError, ZeroDivisionError):
         pass
 
     return " ".join(entries)
@@ -98,7 +103,7 @@ def format_make_model_lens(exif_tag):
         # Unknown or built-in lens
         pass
 
-    return f"{make} {model}"
+    return f"""<span class="makemodel">{make} {model}</span>"""
 
 
 def format_exif(exif_tag):
@@ -108,20 +113,24 @@ def format_exif(exif_tag):
         dt = datetime.strptime(
             exif_tag["EXIF DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
         )
-        exif_lines.append(dt.strftime("%d.%m.%Y %H:%M"))
+        exif_lines.append(
+            dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
+        )
     except (KeyError, ValueError):
         try:
             dt = datetime.strptime(
                 exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
             )
-            exif_lines.append(dt.strftime("%d.%m.%Y %H:%M"))
+            exif_lines.append(
+                dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
+            )
         except (KeyError, ValueError):
             pass
 
     exif_lines.append(format_make_model_lens(exif_tag))
     exif_lines.append(format_fsi(exif_tag))
 
-    return " • ".join(filter(bool, exif_lines))
+    return """ <span class="sep">•</span> """.join(filter(bool, exif_lines))
 
 
 def copy_files(base_dir):
@@ -154,12 +163,16 @@ def copy_files(base_dir):
         f.write(main_css)
 
 
-def create_thumbnail_html(filename, title):
+def create_thumbnail_html(index, filename, title):
     buf = """<div class="image-container">\n"""
-    buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description="{title}">"""
+    buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
     buf += f"""<img src=".thumbnails/{filename}" alt="{filename}" />"""
     buf += "</a>"
     buf += "</div>"
+    buf += f"""<div class="glightbox-desc gdesc{index}">\n"""
+    buf += f"""<p><span class="download"><a href="{filename}">{filename}</a></span>"""
+    buf += f"""<span class="sep">•</span>{title}</p>\n"""
+    buf += "</div>\n"
 
     return buf
 
@@ -197,7 +210,7 @@ if __name__ == "__main__":
 
     filenames = args.images
 
-    for filename in ProgressBar(max=len(filenames)).iter(filenames):
+    for i, filename in enumerate(ProgressBar(max=len(filenames)).iter(filenames)):
         with open(filename, "rb") as f:
             exif_tag = exifread.process_file(f)
 
@@ -211,7 +224,7 @@ if __name__ == "__main__":
         im.thumbnail((args.size * 2, args.size * 2))
         im.save(f".thumbnails/{filename}", "JPEG")
 
-        html_buf += create_thumbnail_html(filename, format_exif(exif_tag))
+        html_buf += create_thumbnail_html(i, filename, format_exif(exif_tag))
 
     with open(f"{base_dir}/share/html_end", "r") as f:
         html_buf += f.read()
