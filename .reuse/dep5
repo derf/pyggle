@@ -1,0 +1,13 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: README.md
+Copyright: 2021 Daniel Friesel
+License: CC0-1.0
+
+Files: share/css/main.css share/html_start share/html_end
+Copyright: 2021 Daniel Friesel
+License: BSD-2-Clause
+
+Files: share/css/glightbox.min.css share/js/glightbox.min.js
+Copyright: 2018 Biati Digital https://www.biati.digital
+License: MIT
