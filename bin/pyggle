@@ -167,10 +167,10 @@ def copy_files(base_dir):
         f.write(main_css)
 
 
-def create_thumbnail_html(index, filename, title):
+def create_thumbnail_html(index, thumbname, filename, title):
     buf = """<div class="image-container">\n"""
     buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
-    buf += f"""<img src=".thumbnails/{filename}" alt="{filename}" />"""
+    buf += f"""<img src="{thumbname}" alt="{filename}" />"""
     buf += "</a>"
     buf += "</div>"
     buf += f"""<div class="glightbox-desc gdesc{index}">\n"""
@@ -226,9 +226,15 @@ if __name__ == "__main__":
         im = rotate_image(im, exif_tag)
 
         im.thumbnail((args.size * 2, args.size * 2))
-        im.save(f".thumbnails/{filename}", "JPEG")
 
-        html_buf += create_thumbnail_html(i, filename, format_exif(exif_tag))
+        thumbname = f".thumbnails/{filename}"
+
+        if not filename.lower().endswith((".jpeg", ".jpg")):
+            thumbname += ".jpg"
+
+        im.convert("RGB").save(thumbname, "JPEG")
+
+        html_buf += create_thumbnail_html(i, thumbname, filename, format_exif(exif_tag))
 
     with open(f"{base_dir}/share/html_end", "r") as f:
         html_buf += f.read()
