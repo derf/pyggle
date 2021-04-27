@@ -1,0 +1,14 @@
+body, html {
+	color: #eeeeee;
+	background-color: #333333;
+}
+
+a {
+	color: #9999ff;
+}
+
+.glightbox-clean
+.gslide-description {
+	color: #eeeeee!important;
+	background-color: #333333!important;
+}

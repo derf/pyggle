@@ -5,8 +5,33 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" type="text/css" href=".data/css/main.css"/>
+	<link rel="stylesheet" type="text/css" href=".data/css/light.css" id="theme"/>
 	<!-- glightbox (C) biati digital, MIT licensed. <https://biati-digital.github.io/glightbox/> -->
 	<link rel="stylesheet" href=".data/css/glightbox.min.css" />
+	<script>
+		function addStyleSheet(name, id) {
+			var path = '.data/css/' + name + '.css';
+			var old = document.getElementById(id);
+			if (old && (old.href != path)) {
+				old.href = path;
+			}
+		}
+		var otherTheme = {
+			'dark': 'light',
+			'light': 'dark',
+		};
+		var currentTheme = localStorage.getItem('theme');
+		if (!otherTheme.hasOwnProperty(currentTheme)) {
+			currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		}
+		addStyleSheet(currentTheme, 'theme');
+
+		function toggleTheme() {
+			currentTheme = otherTheme[currentTheme] || 'light';
+			localStorage.setItem('theme', currentTheme);
+			addStyleSheet(currentTheme, 'theme');
+		}
+	</script>
 	<script src=".data/js/glightbox.min.js"></script>
 </head>
 <body><div>

@@ -146,7 +146,7 @@ def copy_files(base_dir):
     imgwidth = f"{args.size}px"
     imgheight = f"{args.size}px"
 
-    css_files = ["glightbox.min.css"]
+    css_files = ["glightbox.min.css", "light.css", "dark.css"]
     js_files = ["glightbox.min.js"]
 
     for css_file in css_files:
