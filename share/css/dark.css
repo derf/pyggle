@@ -12,3 +12,16 @@ a {
 	color: #eeeeee!important;
 	background-color: #333333!important;
 }
+
+.glightbox-mobile
+.gslide-description {
+	padding-top: 0!important;
+	padding-bottom: 0!important;
+	bottom: 0!important;
+}
+
+.glightbox-mobile
+.gslide-description
+.gdesc-inner {
+	padding-top: 0!important;
+}
