@@ -15,6 +15,9 @@ from progress.bar import Bar
 import shutil
 import sys
 
+geocoder = None
+location_cache = dict()
+
 
 class ProgressBar(Bar):
     suffix = "%(percent).0f%% [%(elapsed_td)s/%(eta_td)s]"
@@ -40,6 +43,56 @@ def format_f(value, precision=1):
     if value % 1 == 0:
         return f"{value:.0f}"
     return f"{value:.{precision}f}"
+
+
+def format_gps(exif_tag):
+    try:
+        lat = exif_tag["GPS GPSLatitude"]
+        latref = exif_tag["GPS GPSLatitudeRef"].values[0]
+        lon = exif_tag["GPS GPSLongitude"]
+        lonref = exif_tag["GPS GPSLongitudeRef"].values[0]
+    except KeyError:
+        return None
+
+    try:
+        lat = (
+            float(lat.values[0])
+            + float(lat.values[1]) / 60
+            + float(lat.values[2]) / 3600
+        )
+        lon = (
+            float(lon.values[0])
+            + float(lon.values[1]) / 60
+            + float(lon.values[2]) / 3600
+        )
+    except (IndexError, ZeroDivisionError):
+        return None
+
+    if latref == "S":
+        lat = -lat
+
+    if lonref == "W":
+        lon = -lon
+
+    global location_cache
+    global geocoder
+
+    latlon = f"{lat:.3f}/{lon:.3f}"
+
+    if latlon in location_cache:
+        return f"""<a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location_cache[latlon]}</a>"""
+
+    if geocoder is None:
+        from geopy.geocoders import Nominatim
+
+        geocoder = Nominatim(user_agent="pyggle +https://github.com/derf/pyggle")
+
+    # zoom level: 15 -> district, 16/17 -> street, 18 -> house no
+    res = geocoder.reverse((lat, lon), zoom=15)
+    location = res.address.split(",")[0]
+    location_cache[latlon] = location
+
+    return f"""<a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location}</a>"""
 
 
 def format_fsi(exif_tag):
@@ -113,23 +166,29 @@ def format_make_model_lens(exif_tag):
 def format_exif(exif_tag):
     exif_lines = list()
 
+    date_and_loc = ""
+
     try:
         dt = datetime.strptime(
             exif_tag["EXIF DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
         )
-        exif_lines.append(
-            dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
-        )
+        date_and_loc += dt.strftime("%d.%m.%Y %H:%M")
     except (KeyError, ValueError):
         try:
             dt = datetime.strptime(
                 exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
             )
-            exif_lines.append(
-                dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
-            )
+            date_and_loc += dt.strftime("%d.%m.%Y %H:%M")
         except (KeyError, ValueError):
             pass
+
+    if args.with_nominatim:
+        gps_line = format_gps(exif_tag)
+        if gps_line is not None:
+            date_and_loc = f"{date_and_loc} in {gps_line}"
+
+    if len(date_and_loc):
+        exif_lines.append(f"""<span class="datetime">{date_and_loc}</span>""")
 
     exif_lines.append(format_make_model_lens(exif_tag))
     exif_lines.append(format_fsi(exif_tag))
@@ -197,6 +256,7 @@ if __name__ == "__main__":
         "--spacing", type=float, default=1.1, help="Thumbnail spacing ratio"
     )
     parser.add_argument("--title", type=str, help="HTML title", default="")
+    parser.add_argument("--with-nominatim", action="store_true")
     parser.add_argument("images", type=str, nargs="+")
 
     args = parser.parse_args()
