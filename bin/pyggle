@@ -19,10 +19,6 @@ geocoder = None
 location_cache = dict()
 
 
-class ProgressBar(Bar):
-    suffix = "%(percent).0f%% [%(elapsed_td)s/%(eta_td)s]"
-
-
 def rotate_image(image, exif_tag):
     if "Image Orientation" not in exif_tag:
         return image
@@ -45,159 +41,245 @@ def format_f(value, precision=1):
     return f"{value:.{precision}f}"
 
 
-def format_gps(exif_tag):
-    try:
-        lat = exif_tag["GPS GPSLatitude"]
-        latref = exif_tag["GPS GPSLatitudeRef"].values[0]
-        lon = exif_tag["GPS GPSLongitude"]
-        lonref = exif_tag["GPS GPSLongitudeRef"].values[0]
-    except KeyError:
-        return None
+class ProgressBar(Bar):
+    suffix = "%(percent).0f%% [%(elapsed_td)s/%(eta_td)s]"
 
-    try:
-        lat = (
-            float(lat.values[0])
-            + float(lat.values[1]) / 60
-            + float(lat.values[2]) / 3600
+
+class GPSData:
+    def __init__(self, lat, lon, location):
+        self.lat = lat
+        self.lon = lon
+        self.location = location
+
+
+class ThumbnailHTML:
+    def __init__(self):
+        self.gps = None
+        self.datetime = None
+        self.file_link = None
+        self.make = None
+        self.focus = None
+
+    def set_datetime(self, dt):
+        self.datetime = dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
+
+    def set_focus(self, f_num, exposure, focal_length, focal_length35, iso):
+        entries = list()
+        if f_num is not None:
+            entries.append(f"""<span class="fnumber">f/{format_f(f_num)}</span>""")
+
+        if exposure is not None:
+            if exposure >= 1:
+                entries.append(
+                    f"""<span class="exposure">{format_f(exposure)}s</span>"""
+                )
+            elif exposure >= 1e-3:
+                entries.append(
+                    f"""<span class="exposure">{format_f(exposure * 1e3)}ms</span>"""
+                )
+            else:
+                entries.append(
+                    f"""<span class="exposure">{format_f(exposure * 1e6)}µs</span>"""
+                )
+
+        if focal_length is not None:
+            entry = f"{format_f(focal_length)}mm"
+            if focal_length35 is not None and focal_length35 != focal_length:
+                entry += f" (≙ {format_f(focal_length35)}mm)"
+            entries.append(f"""<span class="focal">{entry}</span>""")
+
+        if iso is not None:
+            entries.append(f"""<span class="iso">ISO{iso}</span>""")
+
+        self.focus = " ".join(entries)
+
+    def set_gps(self, gps):
+        self.gps = f"""<span class="gps"><a href="https://www.openstreetmap.org/?mlat={gps.lat}&mlon={gps.lon}#map=13/{gps.lat}/{gps.lon}">{gps.location}</a></span>"""
+
+    def set_makemodel(self, make, model):
+        self.make = f"""<span class="makemodel">{make} {model}</span>"""
+
+    def to_html(self, index, filename, thumbname):
+        exif_lines = (self.datetime, self.gps, self.make, self.focus)
+        exif_html = """ <span class="sep">•</span> """.join(filter(bool, exif_lines))
+
+        buf = """<div class="image-container">\n"""
+        buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
+        buf += f"""<img src="{thumbname}" alt="{filename}" />"""
+        buf += "</a>"
+        buf += "</div>"
+        buf += f"""<div class="glightbox-desc gdesc{index}">\n"""
+        buf += (
+            f"""<p><span class="download"><a href="{filename}">{filename}</a></span>"""
         )
-        lon = (
-            float(lon.values[0])
-            + float(lon.values[1]) / 60
-            + float(lon.values[2]) / 3600
-        )
-    except (IndexError, ZeroDivisionError):
-        return None
+        buf += f"""<span class="sep">•</span>{exif_html}</p>\n"""
+        buf += "</div>\n"
 
-    if abs(lat) < 0.01 and abs(lon) < 0.01:
-        return None
-
-    if latref == "S":
-        lat = -lat
-
-    if lonref == "W":
-        lon = -lon
-
-    global location_cache
-    global geocoder
-
-    latlon = f"{lat:.3f}/{lon:.3f}"
-
-    if latlon in location_cache:
-        return f"""<span class="gps"><a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location_cache[latlon]}</a></span>"""
-
-    if geocoder is None:
-        from geopy.geocoders import Nominatim
-
-        geocoder = Nominatim(user_agent="pyggle +https://github.com/derf/pyggle")
-
-    # zoom level: 12/13 -> city, 14/15 -> district, 16/17 -> street, 18 -> house no
-    try:
-        res = geocoder.reverse((lat, lon), zoom=args.nominatim_zoom)
-    except TypeError as e:
-        return None
-
-    location = res.address.split(",")[0]
-    location_cache[latlon] = location
-
-    return f"""<span class="gps"><a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location}</a></span>"""
+        return buf
 
 
-def format_fsi(exif_tag):
-    entries = list()
+class Thumbnail:
+    def __init__(self, filename, im, size=250, with_gps=False):
+        self.filename = filename
+        self.size = size
+        self.exif_dt = None
+        self.gps = None
 
-    try:
-        f_num = float(exif_tag["EXIF FNumber"].values[0])
-        entries.append(f"""<span class="fnumber">f/{format_f(f_num)}</span>""")
-    except (KeyError, ZeroDivisionError):
-        pass
+        with open(filename, "rb") as f:
+            self.exif_tag = exifread.process_file(f)
 
-    try:
-        exposure = float(exif_tag["EXIF ExposureTime"].values[0])
-        if exposure >= 1:
-            entries.append(f"""<span class="exposure">{format_f(exposure)}s</span>""")
-        elif exposure >= 1e-3:
-            entries.append(
-                f"""<span class="exposure">{format_f(exposure * 1e3)}ms</span>"""
-            )
-        else:
-            entries.append(
-                f"""<span class="exposure">{format_f(exposure * 1e6)}µs</span>"""
-            )
-    except (KeyError, ZeroDivisionError):
-        pass
+        self.thumbname = f".thumbnails/{filename}"
+        if not filename.lower().endswith((".jpeg", ".jpg")):
+            self.thumbname += ".jpg"
 
-    try:
-        focal_length = float(exif_tag["EXIF FocalLength"].values[0])
-        entry = f"{format_f(focal_length)}mm"
-        try:
-            focal_length35 = float(exif_tag["EXIF FocalLengthIn35mmFilm"].values[0])
-            entry += f" (≙ {format_f(focal_length35)}mm)"
-        except (KeyError, ZeroDivisionError):
-            pass
-        entries.append(f"""<span class="focal">{entry}</span>""")
-    except (KeyError, ZeroDivisionError):
-        pass
+        im = rotate_image(im, self.exif_tag)
+        im.thumbnail((self.size * 2, self.size * 2))
+        im.convert("RGB").save(self.thumbname, "JPEG")
 
-    try:
-        iso = exif_tag["EXIF ISOSpeedRatings"].values[0]
-        entries.append(f"""<span class="iso">ISO{iso}</span>""")
-    except KeyError:
-        pass
+        self.html = ThumbnailHTML()
 
-    return " ".join(entries)
+        self._get_datetime()
+        self._get_focus()
+        self._get_makemodel()
 
+        if with_gps:
+            self._get_gps()
 
-def format_make_model_lens(exif_tag):
-    try:
-        make = exif_tag["Image Make"].values
-        model = exif_tag["Image Model"].values
-    except KeyError:
-        return None
+    def _get_datetime(self):
+        dt = None
 
-    if model.startswith(make):
-        model = model[len(make) :]
-        if model[0] == " ":
-            model = model[1:]
-
-    try:
-        lens = exif_tag["EXIF LensModel"]
-        if lens:
-            model += f" + {lens}"
-    except KeyError:
-        # Unknown or built-in lens
-        pass
-
-    return f"""<span class="makemodel">{make} {model}</span>"""
-
-
-def format_exif(exif_tag):
-    exif_lines = list()
-    dt = None
-
-    try:
-        dt = datetime.strptime(
-            exif_tag["EXIF DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
-        )
-    except (KeyError, ValueError):
         try:
             dt = datetime.strptime(
-                exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
+                self.exif_tag["EXIF DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
             )
         except (KeyError, ValueError):
+            try:
+                dt = datetime.strptime(
+                    self.exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
+                )
+            except (KeyError, ValueError):
+                pass
+
+        if dt:
+            self.exif_dt = dt
+            self.html.set_datetime(dt)
+
+    def _get_focus(self):
+        entries = list()
+
+        f_num = None
+        exposure = None
+        focal_length = None
+        focal_length35 = None
+        iso = None
+
+        try:
+            f_num = float(self.exif_tag["EXIF FNumber"].values[0])
+        except (KeyError, ZeroDivisionError):
             pass
 
-    if dt:
-        exif_lines.append(
-            dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
-        )
+        try:
+            exposure = float(self.exif_tag["EXIF ExposureTime"].values[0])
+        except (KeyError, ZeroDivisionError):
+            pass
 
-    if args.with_nominatim:
-        exif_lines.append(format_gps(exif_tag))
+        try:
+            focal_length = float(self.exif_tag["EXIF FocalLength"].values[0])
+            focal_length35 = float(
+                self.exif_tag["EXIF FocalLengthIn35mmFilm"].values[0]
+            )
+        except (KeyError, ZeroDivisionError):
+            pass
 
-    exif_lines.append(format_make_model_lens(exif_tag))
-    exif_lines.append(format_fsi(exif_tag))
+        try:
+            iso = self.exif_tag["EXIF ISOSpeedRatings"].values[0]
+        except KeyError:
+            pass
 
-    return """ <span class="sep">•</span> """.join(filter(bool, exif_lines))
+        self.html.set_focus(f_num, exposure, focal_length, focal_length35, iso)
+
+    def _get_gps(self):
+        try:
+            lat = self.exif_tag["GPS GPSLatitude"]
+            latref = self.exif_tag["GPS GPSLatitudeRef"].values[0]
+            lon = self.exif_tag["GPS GPSLongitude"]
+            lonref = self.exif_tag["GPS GPSLongitudeRef"].values[0]
+        except KeyError:
+            return
+
+        try:
+            lat = (
+                float(lat.values[0])
+                + float(lat.values[1]) / 60
+                + float(lat.values[2]) / 3600
+            )
+            lon = (
+                float(lon.values[0])
+                + float(lon.values[1]) / 60
+                + float(lon.values[2]) / 3600
+            )
+        except (IndexError, ZeroDivisionError):
+            return
+
+        if abs(lat) < 0.01 and abs(lon) < 0.01:
+            return
+
+        if latref == "S":
+            lat = -lat
+
+        if lonref == "W":
+            lon = -lon
+
+        global location_cache
+        global geocoder
+
+        latlon = f"{lat:.3f}/{lon:.3f}"
+
+        if latlon in location_cache:
+            self.gps = GPSData(lat, lon, location_cache[latlon])
+            self.html.set_gps(self.gps)
+            return
+
+        if geocoder is None:
+            from geopy.geocoders import Nominatim
+
+            geocoder = Nominatim(user_agent="pyggle +https://github.com/derf/pyggle")
+
+        # zoom level: 12/13 -> city, 14/15 -> district, 16/17 -> street, 18 -> house no
+        try:
+            res = geocoder.reverse((lat, lon), zoom=args.nominatim_zoom)
+            location = res.address.split(",")[0]
+            location_cache[latlon] = location
+        except TypeError as e:
+            location = latlon
+
+        self.gps = GPSData(lat, lon, location)
+        self.html.set_gps(self.gps)
+
+    def _get_makemodel(self):
+        try:
+            make = self.exif_tag["Image Make"].values
+            model = self.exif_tag["Image Model"].values
+        except KeyError:
+            return
+
+        if model.startswith(make):
+            model = model[len(make) :]
+            if model[0] == " ":
+                model = model[1:]
+
+        try:
+            lens = self.exif_tag["EXIF LensModel"]
+            if lens:
+                model += f" + {lens}"
+        except KeyError:
+            # Unknown or built-in lens
+            pass
+
+        self.html.set_makemodel(make, model)
+
+    def to_html(self, index):
+        return self.html.to_html(i, self.filename, self.thumbname)
 
 
 def copy_files(base_dir):
@@ -228,20 +310,6 @@ def copy_files(base_dir):
 
     with open(".data/css/main.css", "w") as f:
         f.write(main_css)
-
-
-def create_thumbnail_html(index, thumbname, filename, title):
-    buf = """<div class="image-container">\n"""
-    buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
-    buf += f"""<img src="{thumbname}" alt="{filename}" />"""
-    buf += "</a>"
-    buf += "</div>"
-    buf += f"""<div class="glightbox-desc gdesc{index}">\n"""
-    buf += f"""<p><span class="download"><a href="{filename}">{filename}</a></span>"""
-    buf += f"""<span class="sep">•</span>{title}</p>\n"""
-    buf += "</div>\n"
-
-    return buf
 
 
 if __name__ == "__main__":
@@ -283,28 +351,20 @@ if __name__ == "__main__":
             html_buf += f.read()
 
     filenames = args.images
+    thumbnails = list()
 
     for i, filename in enumerate(ProgressBar(max=len(filenames)).iter(filenames)):
-        with open(filename, "rb") as f:
-            exif_tag = exifread.process_file(f)
-
         try:
             im = Image.open(filename)
         except PIL.UnidentifiedImageError:
             continue
 
-        im = rotate_image(im, exif_tag)
+        thumbnails.append(
+            Thumbnail(filename, im, size=args.size, with_gps=args.with_nominatim)
+        )
 
-        im.thumbnail((args.size * 2, args.size * 2))
-
-        thumbname = f".thumbnails/{filename}"
-
-        if not filename.lower().endswith((".jpeg", ".jpg")):
-            thumbname += ".jpg"
-
-        im.convert("RGB").save(thumbname, "JPEG")
-
-        html_buf += create_thumbnail_html(i, thumbname, filename, format_exif(exif_tag))
+    for i, thumbnail in enumerate(thumbnails):
+        html_buf += thumbnail.to_html(i)
 
     with open(f"{base_dir}/share/html_end", "r") as f:
         html_buf += f.read()
