@@ -329,6 +329,7 @@ if __name__ == "__main__":
         default=16,
         help="Zoom Level for reverse geocoding",
     )
+    parser.add_argument("--reverse", action="store_true")
     parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
     parser.add_argument("--sort", type=str, default="none", help="sort images")
     parser.add_argument(
@@ -365,7 +366,7 @@ if __name__ == "__main__":
         )
 
     if args.sort == "time":
-        thumbnails = sorted(thumbnails, key=lambda t: t.exif_dt)
+        thumbnails = sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
 
     for i, thumbnail in enumerate(thumbnails):
         html_buf += thumbnail.to_html(i)
