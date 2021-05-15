@@ -68,6 +68,9 @@ def format_gps(exif_tag):
     except (IndexError, ZeroDivisionError):
         return None
 
+    if abs(lat) < 0.01 and abs(lon) < 0.01:
+        return None
+
     if latref == "S":
         lat = -lat
 
@@ -80,19 +83,23 @@ def format_gps(exif_tag):
     latlon = f"{lat:.3f}/{lon:.3f}"
 
     if latlon in location_cache:
-        return f"""<a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location_cache[latlon]}</a>"""
+        return f"""<span class="gps"><a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location_cache[latlon]}</a></span>"""
 
     if geocoder is None:
         from geopy.geocoders import Nominatim
 
         geocoder = Nominatim(user_agent="pyggle +https://github.com/derf/pyggle")
 
-    # zoom level: 15 -> district, 16/17 -> street, 18 -> house no
-    res = geocoder.reverse((lat, lon), zoom=15)
+    # zoom level: 12/13 -> city, 14/15 -> district, 16/17 -> street, 18 -> house no
+    try:
+        res = geocoder.reverse((lat, lon), zoom=args.nominatim_zoom)
+    except TypeError as e:
+        return None
+
     location = res.address.split(",")[0]
     location_cache[latlon] = location
 
-    return f"""<a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location}</a>"""
+    return f"""<span class="gps"><a href="https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=13/{lat}/{lon}">{location}</a></span>"""
 
 
 def format_fsi(exif_tag):
@@ -165,30 +172,27 @@ def format_make_model_lens(exif_tag):
 
 def format_exif(exif_tag):
     exif_lines = list()
-
-    date_and_loc = ""
+    dt = None
 
     try:
         dt = datetime.strptime(
             exif_tag["EXIF DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
         )
-        date_and_loc += dt.strftime("%d.%m.%Y %H:%M")
     except (KeyError, ValueError):
         try:
             dt = datetime.strptime(
                 exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
             )
-            date_and_loc += dt.strftime("%d.%m.%Y %H:%M")
         except (KeyError, ValueError):
             pass
 
-    if args.with_nominatim:
-        gps_line = format_gps(exif_tag)
-        if gps_line is not None:
-            date_and_loc = f"{date_and_loc} in {gps_line}"
+    if dt:
+        exif_lines.append(
+            dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
+        )
 
-    if len(date_and_loc):
-        exif_lines.append(f"""<span class="datetime">{date_and_loc}</span>""")
+    if args.with_nominatim:
+        exif_lines.append(format_gps(exif_tag))
 
     exif_lines.append(format_make_model_lens(exif_tag))
     exif_lines.append(format_fsi(exif_tag))
@@ -250,6 +254,12 @@ if __name__ == "__main__":
         metavar="FILE",
         type=str,
         help="file with HTML to include before thumbnail list",
+    )
+    parser.add_argument(
+        "--nominatim-zoom",
+        type=int,
+        default=16,
+        help="Zoom Level for reverse geocoding",
     )
     parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
     parser.add_argument(
