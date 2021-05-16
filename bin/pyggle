@@ -158,7 +158,12 @@ class Thumbnail:
                     self.exif_tag["Image DateTimeOriginal"].values, "%Y:%m:%d %H:%M:%S"
                 )
             except (KeyError, ValueError):
-                pass
+                try:
+                    dt = datetime.strptime(
+                        self.exif_tag["Image DateTime"].values, "%Y:%m:%d %H:%M:%S"
+                    )
+                except (KeyError, ValueError):
+                    pass
 
         if dt:
             self.exif_dt = dt
