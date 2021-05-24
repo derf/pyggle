@@ -10,8 +10,8 @@ div.image-container {
 	text-align: center;
 	font-size: 80%;
 	float: left;
-	width: /* $boxwidth */;
-	height: /* $boxheight */;
+	width: 275.0px;
+	height: 275.0px;
 }
 
 div.image-container a {
@@ -19,8 +19,23 @@ div.image-container a {
 }
 
 div.image-container img {
-	max-width: /* $imgwidth */;
-	max-height: /* $imgheight */;
+	max-width: 250px;
+	max-height: 250px;
+}
+
+div.image-page img {
+	max-width: 100%;
+}
+
+div.image-details {
+	max-width: 50em;
+	margin-top: 2em;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+div.image-details th {
+	text-align: left;
 }
 
 .gslide-desc p span {

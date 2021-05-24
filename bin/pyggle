@@ -52,7 +52,7 @@ class GPSData:
         self.location = location
 
 
-class ThumbnailHTML:
+class ImageHTML:
     def __init__(self):
         self.gps = None
         self.datetime = None
@@ -60,36 +60,55 @@ class ThumbnailHTML:
         self.make = None
         self.focus = None
 
+        self.f_num = None
+        self.exposure = None
+        self.exposure_mode = None
+        self.exposure_program = None
+        self.focal_length = None
+        self.iso = None
+
     def set_datetime(self, dt):
         self.datetime = dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
+
+    def set_exposure_mode(self, exposure_mode):
+        self.exposure_mode = f"""<span class="exposure-mode">{exposure_mode}</span>"""
+
+    def set_exposure_program(self, exposure_program):
+        self.exposure_program = (
+            f"""<span class="exposure-program">{exposure_program}</span>"""
+        )
 
     def set_focus(self, f_num, exposure, focal_length, focal_length35, iso):
         entries = list()
         if f_num is not None:
-            entries.append(f"""<span class="fnumber">f/{format_f(f_num)}</span>""")
+            self.f_num = f"""<span class="fnumber">f/{format_f(f_num)}</span>"""
+            entries.append(self.f_num)
 
         if exposure is not None:
             if exposure >= 1:
-                entries.append(
+                self.exposure = (
                     f"""<span class="exposure">{format_f(exposure)}s</span>"""
                 )
             elif exposure >= 1e-3:
-                entries.append(
+                self.exposure = (
                     f"""<span class="exposure">{format_f(exposure * 1e3)}ms</span>"""
                 )
             else:
-                entries.append(
+                self.exposure = (
                     f"""<span class="exposure">{format_f(exposure * 1e6)}µs</span>"""
                 )
+            entries.append(self.exposure)
 
         if focal_length is not None:
             entry = f"{format_f(focal_length)}mm"
             if focal_length35 is not None and focal_length35 != focal_length:
                 entry += f" (≙ {format_f(focal_length35)}mm)"
-            entries.append(f"""<span class="focal">{entry}</span>""")
+            self.focal_length = f"""<span class="focal">{entry}</span>"""
+            entries.append(self.focal_length)
 
         if iso is not None:
-            entries.append(f"""<span class="iso">ISO{iso}</span>""")
+            self.iso = f"""<span class="iso">ISO{iso}</span>"""
+            entries.append(self.iso)
 
         self.focus = " ".join(entries)
 
@@ -99,7 +118,11 @@ class ThumbnailHTML:
     def set_makemodel(self, make, model):
         self.make = f"""<span class="makemodel">{make} {model}</span>"""
 
-    def to_html(self, index, filename, thumbname):
+    def to_thumbnail_html(self, index, filename, thumbname, with_detail_page=False):
+
+        if with_detail_page:
+            self.focus = f"""<a href="{filename}.html">{self.focus}</a>"""
+
         exif_lines = (self.datetime, self.gps, self.make, self.focus)
         exif_html = """ <span class="sep">•</span> """.join(filter(bool, exif_lines))
 
@@ -114,6 +137,37 @@ class ThumbnailHTML:
         )
         buf += f"""<span class="sep">•</span>{exif_html}</p>\n"""
         buf += "</div>\n"
+
+        return buf
+
+    def to_detail_html(self, filename):
+        buf = """<div class="image-page">"""
+        buf += f"""<a href="{filename}"><img src="{filename}"></a>"""
+        buf += "</div>\n"
+        buf += """<div class="image-details">\n"""
+        buf += "<p><table>\n"
+
+        if self.datetime:
+            buf += f"<tr><th>Zeit</th><td>{self.datetime}</td></tr>\n"
+        if self.gps:
+            buf += f"<tr><th>Ort</th><td>{self.gps}</td></tr>\n"
+        if self.make:
+            buf += f"<tr><th>Kamera</th><td>{self.make}</td></tr>\n"
+        buf += "<tr><th></th><td>&nbsp;</td></tr>\n"
+        if self.f_num:
+            buf += f"<tr><th>Blende</th><td>{self.f_num}</td></tr>\n"
+        if self.exposure:
+            buf += f"<tr><th>Belichtung</th><td>{self.exposure}</td></tr>\n"
+        if self.iso:
+            buf += f"<tr><th>Verstärkung</th><td>{self.iso}</td></tr>\n"
+        if self.focal_length:
+            buf += f"<tr><th>Brennweite</th><td>{self.focal_length}</td></tr>\n"
+        buf += "<tr><th></th><td>&nbsp;</td></tr>\n"
+        if self.exposure_program:
+            buf += f"<tr><th>Modus</th><td>{self.exposure_program}</td></tr>\n"
+        if self.exposure_mode:
+            buf += f"<tr><th>Belichtung</th><td>{self.exposure_mode}</td></tr>\n"
+        buf += "</table></p></div>\n"
 
         return buf
 
@@ -136,7 +190,7 @@ class Thumbnail:
         im.thumbnail((self.size * 2, self.size * 2))
         im.convert("RGB").save(self.thumbname, "JPEG")
 
-        self.html = ThumbnailHTML()
+        self.html = ImageHTML()
 
         self._get_datetime()
         self._get_focus()
@@ -202,6 +256,16 @@ class Thumbnail:
             pass
 
         self.html.set_focus(f_num, exposure, focal_length, focal_length35, iso)
+
+        try:
+            self.html.set_exposure_mode(self.exif_tag["EXIF ExposureMode"])
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_exposure_program(self.exif_tag["EXIF ExposureProgram"])
+        except KeyError:
+            pass
 
     def _get_gps(self):
         try:
@@ -283,8 +347,16 @@ class Thumbnail:
 
         self.html.set_makemodel(make, model)
 
-    def to_html(self, index):
-        return self.html.to_html(i, self.filename, self.thumbname)
+    def to_html(self, index, with_detail_page=False):
+        return self.html.to_thumbnail_html(
+            i, self.filename, self.thumbname, with_detail_page
+        )
+
+    def to_detail_html(self, html_prefix, html_postfix):
+        with open(f"{self.filename}.html", "w") as f:
+            f.write(html_prefix.replace("<!-- $title -->", self.filename))
+            f.write(self.html.to_detail_html(self.filename))
+            f.write(html_postfix)
 
 
 def copy_files(base_dir):
@@ -334,13 +406,20 @@ if __name__ == "__main__":
         default=16,
         help="Zoom Level for reverse geocoding",
     )
-    parser.add_argument("--reverse", action="store_true")
+    parser.add_argument("--reverse", action="store_true", help="Reverse sort order")
     parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
-    parser.add_argument("--sort", type=str, default="none", help="sort images")
+    parser.add_argument(
+        "--sort",
+        metavar="MODE",
+        choices=["none", "time"],
+        default="none",
+        help="Sort images",
+    )
     parser.add_argument(
         "--spacing", type=float, default=1.1, help="Thumbnail spacing ratio"
     )
     parser.add_argument("--title", type=str, help="HTML title", default="")
+    parser.add_argument("--with-detail-page", action="store_true")
     parser.add_argument("--with-nominatim", action="store_true")
     parser.add_argument("images", type=str, nargs="+")
 
@@ -374,7 +453,15 @@ if __name__ == "__main__":
         thumbnails = sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
 
     for i, thumbnail in enumerate(thumbnails):
-        html_buf += thumbnail.to_html(i)
+        html_buf += thumbnail.to_html(i, args.with_detail_page)
+
+    if args.with_detail_page:
+        with open(f"{base_dir}/share/html_detail_start", "r") as f:
+            detail_html_start = f.read()
+        with open(f"{base_dir}/share/html_detail_end", "r") as f:
+            detail_html_end = f.read()
+        for thumbnail in thumbnails:
+            thumbnail.to_detail_html(detail_html_start, detail_html_end)
 
     with open(f"{base_dir}/share/html_end", "r") as f:
         html_buf += f.read()
