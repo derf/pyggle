@@ -23,8 +23,13 @@ div.image-container img {
 	max-height: 250px;
 }
 
+div.image-page {
+	text-align: center;
+}
+
 div.image-page img {
-	max-width: 100%;
+	max-width: 98vw;
+	max-height: 90vh;
 }
 
 div.image-details {
