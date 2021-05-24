@@ -163,7 +163,7 @@ class Thumbnail:
                         self.exif_tag["Image DateTime"].values, "%Y:%m:%d %H:%M:%S"
                     )
                 except (KeyError, ValueError):
-                    pass
+                    dt = datetime.fromtimestamp(os.path.getmtime(self.filename))
 
         if dt:
             self.exif_dt = dt
