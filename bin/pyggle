@@ -188,7 +188,12 @@ class Thumbnail:
 
         im = rotate_image(im, self.exif_tag)
         im.thumbnail((self.size * 2, self.size * 2))
-        im.convert("RGB").save(self.thumbname, "JPEG")
+        im = im.convert("RGB")
+        im.save(self.thumbname, "JPEG")
+
+        if args.with_detail_page:
+            self.average_color = im.resize((1, 1)).getpixel((0, 0))
+            self.luminance = im.convert("L").getpixel((0, 0))
 
         self.html = ImageHTML()
 
@@ -354,8 +359,20 @@ class Thumbnail:
 
     def to_detail_html(self, html_prefix, html_postfix):
         with open(f"{self.filename}.html", "w") as f:
-            f.write(html_prefix.replace("<!-- $title -->", self.filename))
-            f.write(self.html.to_detail_html(self.filename))
+            prefix = html_prefix.replace("<!-- $title -->", self.filename)
+            r, g, b = self.average_color
+            prefix = prefix.replace(
+                "<html>", f"""<html style="background-color: #{r:02x}{g:02x}{b:02x}">"""
+            )
+            prefix = prefix.replace(
+                "<body>", f"""<body style="background-color: #{r:02x}{g:02x}{b:02x}">"""
+            )
+            if self.luminance >= 127:
+                prefix = prefix.replace("<!-- $theme -->", "light")
+            else:
+                prefix = prefix.replace("<!-- $theme -->", "dark")
+            f.write(prefix)
+            f.write(self.html.to_detail_html(self.filename, self.exif_tag))
             f.write(html_postfix)
 
 
