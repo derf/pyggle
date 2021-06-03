@@ -62,12 +62,15 @@ class ImageHTML:
         self.make = None
         self.focus = None
 
-        self.f_num = None
         self.exposure = None
         self.exposure_mode = None
         self.exposure_program = None
+        self.f_num = None
+        self.flash = None
         self.focal_length = None
+        self.focus_distance = None
         self.iso = None
+        self.subject_distance = None
 
     def set_datetime(self, dt):
         self.datetime = dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
@@ -82,6 +85,13 @@ class ImageHTML:
 
     def set_flash(self, flash):
         self.flash = f"""<span class="flash">{flash}</span>"""
+
+    def set_focus_distance(self, lower, upper):
+        if upper == "inf":
+            upper = "∞"
+        self.focus_distance = (
+            f"""<span class="focus-distance">{lower} – {upper}</span>"""
+        )
 
     def set_focus(
         self, f_num, exposure, focal_length, focal_length35, crop_factor, iso
@@ -127,6 +137,14 @@ class ImageHTML:
 
     def set_makemodel(self, make, model):
         self.make = f"""<span class="makemodel">{make} {model}</span>"""
+
+    def set_subject_distance(self, distance):
+        if distance < 10000:
+            self.subject_distance = (
+                f"""<span class="subject-distance">{distance} m</span>"""
+            )
+        else:
+            self.subject_distance = f"""<span class="subject-distance">∞</span>"""
 
     def to_thumbnail_html(self, index, filename, thumbname, with_detail_page=False):
 
@@ -179,6 +197,10 @@ class ImageHTML:
             buf += f"<tr><th>Belichtung</th><td>{self.exposure_mode}</td></tr>\n"
         if self.flash:
             buf += f"<tr><th>Blitz</th><td>{self.flash}</td></tr>\n"
+        if self.subject_distance:
+            buf += f"<tr><th>Entfernung</th><td>{self.subject_distance}</td></tr>\n"
+        if self.focus_distance:
+            buf += f"<tr><th>Schärfebereich</th><td>{self.focus_distance}</td></tr>\n"
         buf += "</table></p></div>\n"
 
         return buf
@@ -256,6 +278,21 @@ class Thumbnail:
     def _get_details(self):
         try:
             self.html.set_flash(self.exif_tag["EXIF Flash"])
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_subject_distance(
+                float(self.exif_tag["EXIF SubjectDistance"].values[0])
+            )
+        except (KeyError, ZeroDivisionError):
+            pass
+
+        try:
+            self.html.set_focus_distance(
+                self.exiftool["MakerNotes:FocusDistanceLower"],
+                self.exiftool["MakerNotes:FocusDistanceUpper"],
+            )
         except KeyError:
             pass
 
