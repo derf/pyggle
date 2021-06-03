@@ -107,8 +107,9 @@ class ImageHTML:
             entries.append(self.focal_length)
 
         if iso is not None:
-            self.iso = f"""<span class="iso">ISO{iso}</span>"""
-            entries.append(self.iso)
+            self.iso_iso = f"""<span class="iso">ISO{iso}</span>"""
+            self.iso = f"""<span class="iso">{iso}</span>"""
+            entries.append(self.iso_iso)
 
         self.focus = " ".join(entries)
 
@@ -159,7 +160,7 @@ class ImageHTML:
         if self.exposure:
             buf += f"<tr><th>Belichtung</th><td>{self.exposure}</td></tr>\n"
         if self.iso:
-            buf += f"<tr><th>Verstärkung</th><td>{self.iso}</td></tr>\n"
+            buf += f"<tr><th>ISO</th><td>{self.iso}</td></tr>\n"
         if self.focal_length:
             buf += f"<tr><th>Brennweite</th><td>{self.focal_length}</td></tr>\n"
         buf += "<tr><th></th><td>&nbsp;</td></tr>\n"
