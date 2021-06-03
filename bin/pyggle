@@ -8,11 +8,13 @@
 import argparse
 from datetime import datetime
 import exifread
+import json
 import os
 import PIL
 from PIL import Image
 from progress.bar import Bar
 import shutil
+import subprocess
 import sys
 
 geocoder = None
@@ -78,7 +80,12 @@ class ImageHTML:
             f"""<span class="exposure-program">{exposure_program}</span>"""
         )
 
-    def set_focus(self, f_num, exposure, focal_length, focal_length35, iso):
+    def set_flash(self, flash):
+        self.flash = f"""<span class="flash">{flash}</span>"""
+
+    def set_focus(
+        self, f_num, exposure, focal_length, focal_length35, crop_factor, iso
+    ):
         entries = list()
         if f_num is not None:
             self.f_num = f"""<span class="fnumber">f/{format_f(f_num)}</span>"""
@@ -103,6 +110,8 @@ class ImageHTML:
             entry = f"{format_f(focal_length)}mm"
             if focal_length35 is not None and focal_length35 != focal_length:
                 entry += f" (≙ {format_f(focal_length35)}mm)"
+            elif crop_factor is not None:
+                entry += f" (≙ {format_f(focal_length * crop_factor, 0)}mm)"
             self.focal_length = f"""<span class="focal">{entry}</span>"""
             entries.append(self.focal_length)
 
@@ -168,6 +177,8 @@ class ImageHTML:
             buf += f"<tr><th>Modus</th><td>{self.exposure_program}</td></tr>\n"
         if self.exposure_mode:
             buf += f"<tr><th>Belichtung</th><td>{self.exposure_mode}</td></tr>\n"
+        if self.flash:
+            buf += f"<tr><th>Blitz</th><td>{self.flash}</td></tr>\n"
         buf += "</table></p></div>\n"
 
         return buf
@@ -182,6 +193,18 @@ class Thumbnail:
 
         with open(filename, "rb") as f:
             self.exif_tag = exifread.process_file(f)
+
+        self.exiftool = dict()
+        try:
+            exiftool = subprocess.run(
+                ["exiftool", "-json", "-escapeHTML", "-groupNames", filename],
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+            if exiftool.returncode == 0:
+                self.exiftool = json.loads(exiftool.stdout)[0]
+        except FileNotFoundError:
+            pass
 
         self.thumbname = f".thumbnails/{filename}"
         if not filename.lower().endswith((".jpeg", ".jpg")):
@@ -201,6 +224,7 @@ class Thumbnail:
         self._get_datetime()
         self._get_focus()
         self._get_makemodel()
+        self._get_details()
 
         if with_gps:
             self._get_gps()
@@ -228,6 +252,12 @@ class Thumbnail:
         if dt:
             self.exif_dt = dt
             self.html.set_datetime(dt)
+
+    def _get_details(self):
+        try:
+            self.html.set_flash(self.exif_tag["EXIF Flash"])
+        except KeyError:
+            pass
 
     def _get_focus(self):
         entries = list()
@@ -261,7 +291,11 @@ class Thumbnail:
         except KeyError:
             pass
 
-        self.html.set_focus(f_num, exposure, focal_length, focal_length35, iso)
+        crop_factor = self.exiftool.get("Composite:ScaleFactor35efl", None)
+
+        self.html.set_focus(
+            f_num, exposure, focal_length, focal_length35, crop_factor, iso
+        )
 
         try:
             self.html.set_exposure_mode(self.exif_tag["EXIF ExposureMode"])
