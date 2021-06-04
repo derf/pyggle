@@ -69,7 +69,9 @@ class ImageHTML:
         self.flash = None
         self.focal_length = None
         self.focus_distance = None
+        self.focus_mode = None
         self.iso = None
+        self.software = None
         self.subject_distance = None
 
     def set_datetime(self, dt):
@@ -92,6 +94,9 @@ class ImageHTML:
         self.focus_distance = (
             f"""<span class="focus-distance">{lower} – {upper}</span>"""
         )
+
+    def set_focus_mode(self, mode):
+        self.focus_mode = f"""<span class="focus-mode">{mode}</span>"""
 
     def set_focus(
         self, f_num, exposure, focal_length, focal_length35, crop_factor, iso
@@ -137,6 +142,9 @@ class ImageHTML:
 
     def set_makemodel(self, make, model):
         self.make = f"""<span class="makemodel">{make} {model}</span>"""
+
+    def set_software(self, software):
+        self.software = f"""<span class="software">{software}</span>"""
 
     def set_subject_distance(self, distance):
         if distance < 10000:
@@ -195,12 +203,16 @@ class ImageHTML:
             buf += f"<tr><th>Modus</th><td>{self.exposure_program}</td></tr>\n"
         if self.exposure_mode:
             buf += f"<tr><th>Belichtung</th><td>{self.exposure_mode}</td></tr>\n"
-        if self.flash:
-            buf += f"<tr><th>Blitz</th><td>{self.flash}</td></tr>\n"
+        if self.focus_mode:
+            buf += f"<tr><th>Fokus</th><td>{self.focus_mode}</td></tr>\n"
         if self.subject_distance:
             buf += f"<tr><th>Entfernung</th><td>{self.subject_distance}</td></tr>\n"
         if self.focus_distance:
             buf += f"<tr><th>Schärfebereich</th><td>{self.focus_distance}</td></tr>\n"
+        if self.flash:
+            buf += f"<tr><th>Blitz</th><td>{self.flash}</td></tr>\n"
+        if self.software:
+            buf += f"<tr><th>Software</th><td>{self.software}</td></tr>\n"
         buf += "</table></p></div>\n"
 
         return buf
@@ -293,6 +305,16 @@ class Thumbnail:
                 self.exiftool["MakerNotes:FocusDistanceLower"],
                 self.exiftool["MakerNotes:FocusDistanceUpper"],
             )
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_software(self.exif_tag["Image Software"])
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_focus_mode(self.exiftool["MakerNotes:FocusMode"])
         except KeyError:
             pass
 
