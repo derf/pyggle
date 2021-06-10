@@ -62,6 +62,7 @@ class ImageHTML:
         self.make = None
         self.focus = None
 
+        self.ev = None
         self.exposure = None
         self.exposure_mode = None
         self.exposure_program = None
@@ -71,11 +72,15 @@ class ImageHTML:
         self.focus_distance = None
         self.focus_mode = None
         self.iso = None
+        self.lv = None
         self.software = None
         self.subject_distance = None
 
     def set_datetime(self, dt):
         self.datetime = dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
+
+    def set_ev(self, ev):
+        self.ev = f"""<span class="ev">{ev} EV</span>"""
 
     def set_exposure_mode(self, exposure_mode):
         self.exposure_mode = f"""<span class="exposure-mode">{exposure_mode}</span>"""
@@ -140,6 +145,9 @@ class ImageHTML:
     def set_gps(self, gps):
         self.gps = f"""<span class="gps"><a href="https://www.openstreetmap.org/?mlat={gps.lat}&mlon={gps.lon}#map=13/{gps.lat}/{gps.lon}">{gps.location}</a></span>"""
 
+    def set_lv(self, lv):
+        self.lv = f"""<span class="lv">{lv} LV</span>"""
+
     def set_makemodel(self, make, model):
         self.make = f"""<span class="makemodel">{make} {model}</span>"""
 
@@ -198,6 +206,14 @@ class ImageHTML:
             buf += f"<tr><th>ISO</th><td>{self.iso}</td></tr>\n"
         if self.focal_length:
             buf += f"<tr><th>Brennweite</th><td>{self.focal_length}</td></tr>\n"
+        if self.ev or self.lv:
+            if self.ev and self.lv:
+                text = f"{self.lv} / {self.ev}"
+            elif self.ev:
+                text = self.ev
+            elif self.lv:
+                text = self.lv
+            buf += f"<tr><th>Helligkeit</th><td>{text}</td></tr>\n"
         buf += "<tr><th></th><td>&nbsp;</td></tr>\n"
         if self.exposure_program:
             buf += f"<tr><th>Modus</th><td>{self.exposure_program}</td></tr>\n"
@@ -315,6 +331,21 @@ class Thumbnail:
 
         try:
             self.html.set_focus_mode(self.exiftool["MakerNotes:FocusMode"])
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_focus_mode(self.exiftool["MakerNotes:FocusMode"])
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_ev(self.exiftool["MakerNotes:MeasuredEV"])
+        except KeyError:
+            pass
+
+        try:
+            self.html.set_lv(self.exiftool["Composite:LightValue"])
         except KeyError:
             pass
 
