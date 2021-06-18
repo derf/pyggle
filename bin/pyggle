@@ -573,7 +573,13 @@ if __name__ == "__main__":
         try:
             im = Image.open(filename)
         except PIL.UnidentifiedImageError:
-            continue
+            try:
+                im = Image.open(f".thumbnail.for.{filename}")
+            except FileNotFoundError:
+                continue
+            except PIL.UnidentifiedImageError:
+                # perhaps raise a warning?
+                continue
 
         thumbnails.append(
             Thumbnail(filename, im, size=args.size, with_gps=args.with_nominatim)
