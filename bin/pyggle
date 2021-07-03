@@ -537,6 +537,11 @@ if __name__ == "__main__":
         help="Zoom Level for reverse geocoding",
     )
     parser.add_argument("--reverse", action="store_true", help="Reverse sort order")
+    parser.add_argument(
+        "--scrub-metadata",
+        action="store_true",
+        help="Scrub EXIF metadata from images (IN-PLACE EDIT)",
+    )
     parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
     parser.add_argument(
         "--sort",
@@ -584,6 +589,21 @@ if __name__ == "__main__":
         thumbnails.append(
             Thumbnail(filename, im, size=args.size, with_gps=args.with_nominatim)
         )
+
+        if args.scrub_metadata:
+            subprocess.run(
+                [
+                    "exiftool",
+                    "-q",
+                    "-overwrite_original",
+                    "-EXIF:SerialNumber=",
+                    "-EXIF:LensSerialNumber=",
+                    "-Makernotes:all=",
+                    "-geotag=",
+                    "-ThumbnailImage=",
+                    filename,
+                ]
+            )
 
     if args.sort == "time":
         thumbnails = sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
