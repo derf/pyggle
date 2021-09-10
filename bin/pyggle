@@ -536,6 +536,12 @@ if __name__ == "__main__":
         default=16,
         help="Zoom Level for reverse geocoding",
     )
+    parser.add_argument(
+        "--resize",
+        metavar="N",
+        type=int,
+        help="resize large images to no more than NxN pixels (IN-PLACE EDIT)",
+    )
     parser.add_argument("--reverse", action="store_true", help="Reverse sort order")
     parser.add_argument(
         "--scrub-metadata",
@@ -587,8 +593,18 @@ if __name__ == "__main__":
                 continue
 
         thumbnails.append(
-            Thumbnail(filename, im, size=args.size, with_gps=args.with_nominatim)
+            Thumbnail(filename, im.copy(), size=args.size, with_gps=args.with_nominatim)
         )
+
+        if args.resize and (im.size[0] > args.resize or im.size[1] > args.resize):
+            subprocess.run(
+                [
+                    "mogrify",
+                    "-resize",
+                    f"{args.resize}x{args.resize}",
+                    filename,
+                ]
+            )
 
         if args.scrub_metadata:
             subprocess.run(
