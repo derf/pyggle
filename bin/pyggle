@@ -28,11 +28,11 @@ def rotate_image(image, exif_tag):
     orientation = exif_tag["Image Orientation"].values
 
     if 3 in orientation:
-        image = image.transpose(Image.ROTATE_180)
+        image = image.transpose(Image.Transpose.ROTATE_180)
     if 6 in orientation:
-        image = image.transpose(Image.ROTATE_270)
+        image = image.transpose(Image.Transpose.ROTATE_270)
     if 8 in orientation:
-        image = image.transpose(Image.ROTATE_90)
+        image = image.transpose(Image.Transpose.ROTATE_90)
 
     return image
 
@@ -403,7 +403,7 @@ class Thumbnail:
             latref = self.exif_tag["GPS GPSLatitudeRef"].values[0]
             lon = self.exif_tag["GPS GPSLongitude"]
             lonref = self.exif_tag["GPS GPSLongitudeRef"].values[0]
-        except KeyError:
+        except (KeyError, IndexError):
             return
 
         try:
