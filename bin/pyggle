@@ -61,6 +61,7 @@ class ImageHTML:
         self.file_link = None
         self.make = None
         self.focus = None
+        self.caption = None
 
         self.ev = None
         self.exposure = None
@@ -75,6 +76,9 @@ class ImageHTML:
         self.lv = None
         self.software = None
         self.subject_distance = None
+
+    def set_caption(self, caption):
+        self.caption = caption
 
     def set_datetime(self, dt):
         self.datetime = dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
@@ -167,17 +171,22 @@ class ImageHTML:
         if with_detail_page:
             self.focus = f"""<a href="{filename}.html">{self.focus}</a>"""
 
+        if self.caption:
+            linktext = self.caption
+        else:
+            linktext = filename
+
         exif_lines = (self.datetime, self.gps, self.make, self.focus)
         exif_html = """ <span class="sep">•</span> """.join(filter(bool, exif_lines))
 
         buf = """<div class="image-container">\n"""
         buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
-        buf += f"""<img src="{thumbname}" alt="{filename}" />"""
+        buf += f"""<img src="{thumbname}" alt="{linktext}" />"""
         buf += "</a>"
         buf += "</div>"
         buf += f"""<div class="glightbox-desc gdesc{index}">\n"""
         buf += (
-            f"""<p><span class="download"><a href="{filename}">{filename}</a></span>"""
+            f"""<p><span class="download"><a href="{filename}">{linktext}</a></span>"""
         )
         buf += f"""<span class="sep">•</span>{exif_html}</p>\n"""
         buf += "</div>\n"
@@ -189,6 +198,8 @@ class ImageHTML:
         buf += f"""<a href="{filename}"><img src="{filename}"></a>"""
         buf += "</div>\n"
         buf += """<div class="image-details">\n"""
+        if self.caption:
+            buf += f"<p>{self.caption}</p>\n"
         buf += "<p><table>\n"
 
         if self.datetime:
@@ -271,6 +282,7 @@ class Thumbnail:
 
         self.html = ImageHTML()
 
+        self._get_caption()
         self._get_datetime()
         self._get_focus()
         self._get_makemodel()
@@ -278,6 +290,13 @@ class Thumbnail:
 
         if with_gps:
             self._get_gps()
+
+    def _get_caption(self):
+        try:
+            with open(f".captions/{filename}.txt", "r") as f:
+                self.html.set_caption(f.read())
+        except FileNotFoundError:
+            pass
 
     def _get_datetime(self):
         dt = None
