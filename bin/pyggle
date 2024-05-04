@@ -597,7 +597,7 @@ if __name__ == "__main__":
         help="Sort images",
     )
     parser.add_argument(
-        "--spacing", type=float, default=1.1, help="Thumbnail spacing ratio"
+        "--spacing", type=float, default=1.02, help="Thumbnail spacing ratio"
     )
     parser.add_argument("--title", type=str, help="HTML title", default="")
     parser.add_argument("--with-detail-page", action="store_true")
