@@ -549,6 +549,9 @@ if __name__ == "__main__":
         help="Store captions as EXIF comments (IN-PLACE EDIT)",
     )
     parser.add_argument(
+        "--cdn", metavar="URL", type=str, help="Load JS and CSS from URL/{css,js}"
+    )
+    parser.add_argument(
         "--edit-in-place",
         action="store_true",
         help="Enable options that edit images in-place",
@@ -617,10 +620,15 @@ if __name__ == "__main__":
 
     base_dir = "/".join(os.path.realpath(sys.argv[0]).split("/")[:-2])
 
-    copy_files(f"{base_dir}/share")
+    if not args.cdn:
+        copy_files(f"{base_dir}/share")
 
     with open(f"{base_dir}/share/html_start", "r") as f:
         html_buf = f.read().replace("<!-- $title -->", args.title)
+
+    if args.cdn:
+        html_buf = html_buf.replace('href=".data/css/"', f'href="{args.cdn}/css/')
+        html_buf = html_buf.replace('src=".data/js/"', f'sc="{args.cdn}/js/')
 
     if args.html_include:
         with open(args.html_include, "r") as f:
