@@ -544,6 +544,17 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__
     )
     parser.add_argument(
+        "--caption-to-exif",
+        action="store_true",
+        help="Store captions as EXIF comments (IN-PLACE EDIT)",
+    )
+    parser.add_argument(
+        "--exif-copyright",
+        metavar="STRING",
+        type=str,
+        help="Set EXIF copyright (IN-PLACE EDIT)",
+    )
+    parser.add_argument(
         "--html-include",
         metavar="FILE",
         type=str,
@@ -561,7 +572,9 @@ if __name__ == "__main__":
         type=int,
         help="resize large images to no more than NxN pixels (IN-PLACE EDIT)",
     )
-    parser.add_argument("--reverse", action="store_true", help="Reverse sort order")
+    parser.add_argument(
+        "--reverse", action="store_true", help="Sort from most to least recent"
+    )
     parser.add_argument(
         "--scrub-metadata",
         action="store_true",
@@ -611,9 +624,10 @@ if __name__ == "__main__":
                 # perhaps raise a warning?
                 continue
 
-        thumbnails.append(
-            Thumbnail(filename, im.copy(), size=args.size, with_gps=args.with_nominatim)
+        thumbnail = Thumbnail(
+            filename, im.copy(), size=args.size, with_gps=args.with_nominatim
         )
+        thumbnails.append(thumbnail)
 
         if args.resize and (im.size[0] > args.resize or im.size[1] > args.resize):
             subprocess.run(
@@ -625,19 +639,34 @@ if __name__ == "__main__":
                 ]
             )
 
+        exiftool_args = list()
+
+        if args.caption_to_exif and thumbnail.html.caption:
+            exiftool_args.append(f"-File:Comment={thumbnail.html.caption}")
+
+        if args.exif_copyright:
+            exiftool_args.append(f"-EXIF:Copyright={args.exif_copyright}")
+
         if args.scrub_metadata:
-            subprocess.run(
+            exiftool_args.extend(
                 [
-                    "exiftool",
-                    "-q",
-                    "-overwrite_original",
                     "-EXIF:SerialNumber=",
                     "-EXIF:LensSerialNumber=",
                     "-Makernotes:all=",
                     "-geotag=",
                     "-ThumbnailImage=",
-                    filename,
                 ]
+            )
+
+        if exiftool_args:
+            subprocess.run(
+                [
+                    "exiftool",
+                    "-q",
+                    "-overwrite_original",
+                ]
+                + exiftool_args
+                + [filename]
             )
 
     if args.sort == "time":
