@@ -246,11 +246,12 @@ class ImageHTML:
 
 
 class Thumbnail:
-    def __init__(self, filename, im, size=250, with_gps=False):
+    def __init__(self, filename, im, size=250, with_gps=False, group_key_template=None):
         self.filename = filename
         self.size = size
         self.exif_dt = None
         self.gps = None
+        self.group_key = None
 
         with open(filename, "rb") as f:
             self.exif_tag = exifread.process_file(f)
@@ -287,6 +288,14 @@ class Thumbnail:
         self._get_focus()
         self._get_makemodel()
         self._get_details()
+
+        if group_key_template == "decade" and self.exif_dt:
+            year = self.exif_dt.strftime("%Y")[:3]
+            self.group_key = f"{year}0 – {year}9"
+        elif group_key_template == "year" and self.exif_dt:
+            self.group_key = self.exif_dt.strftime("%Y")
+        elif group_key_template == "year-month" and self.exif_dt:
+            self.group_key = self.exif_dt.strftime("%B %Y")
 
         if with_gps:
             self._get_gps()
@@ -563,6 +572,13 @@ if __name__ == "__main__":
         help="Set EXIF copyright (IN-PLACE EDIT)",
     )
     parser.add_argument(
+        "--group",
+        metavar="SEP",
+        choices=["none", "year-month", "year", "decade"],
+        default="none",
+        help="Add captions to separate images by SEP",
+    )
+    parser.add_argument(
         "--html-include",
         metavar="FILE",
         type=str,
@@ -650,7 +666,11 @@ if __name__ == "__main__":
                 continue
 
         thumbnail = Thumbnail(
-            filename, im.copy(), size=args.size, with_gps=args.with_nominatim
+            filename,
+            im.copy(),
+            size=args.size,
+            with_gps=args.with_nominatim,
+            group_key_template=args.group,
         )
         thumbnails.append(thumbnail)
 
@@ -701,7 +721,12 @@ if __name__ == "__main__":
     if args.sort == "time":
         thumbnails = sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
 
+    prev_heading = None
+
     for i, thumbnail in enumerate(thumbnails):
+        if args.group and thumbnail.group_key != prev_heading:
+            html_buf += f"<h1>{thumbnail.group_key}</h1>"
+            prev_heading = thumbnail.group_key
         html_buf += thumbnail.to_html(i, args.with_detail_page)
 
     if args.with_detail_page:
