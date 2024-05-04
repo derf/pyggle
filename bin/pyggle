@@ -268,8 +268,9 @@ class Thumbnail:
         except FileNotFoundError:
             pass
 
-        self.thumbname = f".thumbnails/{filename}"
-        if not filename.lower().endswith((".jpeg", ".jpg")):
+        thumb_filename = filename.replace("/", "-")
+        self.thumbname = f".thumbnails/{thumb_filename}"
+        if not self.thumbname.lower().endswith((".jpeg", ".jpg")):
             self.thumbname += ".jpg"
 
         im = rotate_image(im, self.exif_tag)
