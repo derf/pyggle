@@ -10,8 +10,8 @@ div.image-container {
 	text-align: center;
 	font-size: 80%;
 	float: left;
-	width: 275.0px;
-	height: 275.0px;
+	width: /* $boxwidth */;
+	height: /* $boxheight */;
 }
 
 div.image-container a {
@@ -19,8 +19,8 @@ div.image-container a {
 }
 
 div.image-container img {
-	max-width: 250px;
-	max-height: 250px;
+	max-width: /* $imgwidth */;
+	max-height: /* $imgheight */;
 }
 
 div.image-page {
