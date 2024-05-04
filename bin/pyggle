@@ -549,6 +549,11 @@ if __name__ == "__main__":
         help="Store captions as EXIF comments (IN-PLACE EDIT)",
     )
     parser.add_argument(
+        "--edit-in-place",
+        action="store_true",
+        help="Enable options that edit images in-place",
+    )
+    parser.add_argument(
         "--exif-copyright",
         metavar="STRING",
         type=str,
@@ -598,6 +603,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if (
+        args.caption_to_exif
+        or args.exif_copyright
+        or args.resize
+        or args.scrub_metadata
+    ) and not args.edit_in_place:
+        print(
+            "in-place edit option used without --edit-in-place, aborting",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     base_dir = "/".join(os.path.realpath(sys.argv[0]).split("/")[:-2])
 
     copy_files(f"{base_dir}/share")
@@ -629,7 +646,11 @@ if __name__ == "__main__":
         )
         thumbnails.append(thumbnail)
 
-        if args.resize and (im.size[0] > args.resize or im.size[1] > args.resize):
+        if (
+            args.edit_in_place
+            and args.resize
+            and (im.size[0] > args.resize or im.size[1] > args.resize)
+        ):
             subprocess.run(
                 [
                     "mogrify",
@@ -658,7 +679,7 @@ if __name__ == "__main__":
                 ]
             )
 
-        if exiftool_args:
+        if args.edit_in_place and exiftool_args:
             subprocess.run(
                 [
                     "exiftool",
