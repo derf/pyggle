@@ -254,7 +254,11 @@ class Thumbnail:
         self.group_key = None
 
         with open(filename, "rb") as f:
-            self.exif_tag = exifread.process_file(f)
+            try:
+                self.exif_tag = exifread.process_file(f)
+            except Exception as e:
+                print(f"Cannot read EXIF data fom '{filename}': {e}", file=sys.stderr)
+                self.exif_tag = dict()
 
         self.exiftool = dict()
         try:
@@ -668,9 +672,15 @@ if __name__ == "__main__":
                 # perhaps raise a warning?
                 continue
 
+        try:
+            im_copy = im.copy()
+        except Exception as e:
+            print(f"Cannot load image '{filename}': {e}", file=sys.stderr)
+            continue
+
         thumbnail = Thumbnail(
             filename,
-            im.copy(),
+            im_copy,
             size=args.size,
             with_gps=args.with_nominatim,
             group_key_template=args.group,
