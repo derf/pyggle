@@ -278,7 +278,7 @@ class Thumbnail:
             self.thumbname += ".jpg"
 
         im = rotate_image(im, self.exif_tag)
-        im.thumbnail((self.size * 2, self.size * 2))
+        im.thumbnail((self.size * 4, self.size * 2))
         im = im.convert("RGB")
         im.save(self.thumbname, "JPEG")
 
@@ -609,7 +609,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Scrub EXIF metadata from images (IN-PLACE EDIT)",
     )
-    parser.add_argument("--size", type=int, default=250, help="Thumbnail size [px]")
+    parser.add_argument("--size", type=int, default=250, help="Thumbnail height [px]")
     parser.add_argument(
         "--sort",
         metavar="MODE",
