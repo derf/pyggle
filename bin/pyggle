@@ -246,12 +246,21 @@ class ImageHTML:
 
 
 class Thumbnail:
-    def __init__(self, filename, im, size=250, with_gps=False, group_key_template=None):
+    def __init__(
+        self,
+        filename,
+        im,
+        size=250,
+        with_gps=False,
+        group_key_template=None,
+        file_key_template=None,
+    ):
         self.filename = filename
         self.size = size
         self.exif_dt = None
         self.gps = None
         self.group_key = None
+        self.file_key = None
 
         with open(filename, "rb") as f:
             try:
@@ -301,6 +310,16 @@ class Thumbnail:
             self.group_key = self.exif_dt.strftime("%Y")
         elif group_key_template == "year-month" and self.exif_dt:
             self.group_key = self.exif_dt.strftime("%B %Y")
+        elif group_key_template == "day" and self.exif_dt:
+            self.group_key = self.exif_dt.strftime("%a, %d. %B %Y")
+
+        if file_key_template == "decade" and self.exif_dt:
+            year = self.exif_dt.strftime("%Y")[:3]
+            self.file_key = f"{year}x"
+        elif file_key_template == "year" and self.exif_dt:
+            self.file_key = self.exif_dt.strftime("%Y")
+        elif file_key_template == "year-month" and self.exif_dt:
+            self.file_key = self.exif_dt.strftime("%Y-%m")
 
         if with_gps:
             self._get_gps()
@@ -512,7 +531,7 @@ class Thumbnail:
 
     def to_html(self, index, with_detail_page=False):
         return self.html.to_thumbnail_html(
-            i, self.filename, self.thumbname, with_detail_page
+            index, self.filename, self.thumbname, with_detail_page
         )
 
     def to_detail_html(self, html_prefix, html_postfix):
@@ -552,6 +571,22 @@ def copy_files(base_dir):
         f.write(main_css)
 
 
+def write_gallery(file_buf, filename, thumbnails, group=None):
+    prev_heading = None
+
+    for i, thumbnail in enumerate(thumbnails):
+        if group and thumbnail.group_key != prev_heading:
+            file_buf += f"<h1>{thumbnail.group_key}</h1>"
+            prev_heading = thumbnail.group_key
+        file_buf += thumbnail.to_html(i, args.with_detail_page)
+
+    with open(f"{base_dir}/share/html_end", "r") as f:
+        file_buf += f.read()
+
+    with open(filename, "w") as f:
+        f.write(file_buf)
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -582,6 +617,13 @@ if __name__ == "__main__":
         choices=["none", "year-month", "year", "decade"],
         default="none",
         help="Add captions to separate images by SEP",
+    )
+    parser.add_argument(
+        "--group-files",
+        metavar="SEP",
+        choices=["none", "year-month", "year", "decade"],
+        default="none",
+        help="Generate one gallery file per SEP group",
     )
     parser.add_argument(
         "--html-include",
@@ -684,6 +726,7 @@ if __name__ == "__main__":
             size=args.size,
             with_gps=args.with_nominatim,
             group_key_template=args.group,
+            file_key_template=args.group_files,
         )
         thumbnails.append(thumbnail)
 
@@ -732,26 +775,26 @@ if __name__ == "__main__":
             )
 
     if args.sort == "time":
-        thumbnails = sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
-
-    prev_heading = None
-
-    for i, thumbnail in enumerate(thumbnails):
-        if args.group and thumbnail.group_key != prev_heading:
-            html_buf += f"<h1>{thumbnail.group_key}</h1>"
-            prev_heading = thumbnail.group_key
-        html_buf += thumbnail.to_html(i, args.with_detail_page)
+        thumbnails = list(
+            sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
+        )
 
     if args.with_detail_page:
-        with open(f"{base_dir}/share/html_detail_start", "r") as f:
-            detail_html_start = f.read()
-        with open(f"{base_dir}/share/html_detail_end", "r") as f:
-            detail_html_end = f.read()
         for thumbnail in thumbnails:
-            thumbnail.to_detail_html(detail_html_start, detail_html_end)
+            with open(f"{base_dir}/share/html_detail_start", "r") as f:
+                detail_html_start = f.read()
+            with open(f"{base_dir}/share/html_detail_end", "r") as f:
+                detail_html_end = f.read()
+            for thumbnail in thumbnails:
+                thumbnail.to_detail_html(detail_html_start, detail_html_end)
 
-    with open(f"{base_dir}/share/html_end", "r") as f:
-        html_buf += f.read()
+    write_gallery(html_buf, "index.html", thumbnails, group=args.group)
 
-    with open("index.html", "w") as f:
-        f.write(html_buf)
+    if args.group_files:
+        thumbnail_keys = list(sorted(set(map(lambda t: t.file_key, thumbnails))))
+        for thumbnail_key in thumbnail_keys:
+            write_gallery(
+                html_buf,
+                f"{thumbnail_key}.html",
+                list(filter(lambda t: t.file_key == thumbnail_key, thumbnails)),
+            )
