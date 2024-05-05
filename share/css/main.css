@@ -14,10 +14,9 @@ h1 {
 
 div.image-container {
 	text-align: center;
-	font-size: 80%;
 	float: left;
-	width: /* $boxwidth */;
-	height: /* $boxheight */;
+	padding-left: 0.15em;
+	padding-right: 0.15em;
 }
 
 div.image-list-end {
@@ -29,8 +28,9 @@ div.image-container a {
 }
 
 div.image-container img {
-	max-width: /* $imgwidth */;
-	max-height: /* $imgheight */;
+	height: /* $imgheight */;
+	margin: 0;
+	padding: 0;
 }
 
 div.image-page {
