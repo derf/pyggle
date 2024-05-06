@@ -12,8 +12,11 @@ h1 {
 	margin-left: 1em;
 }
 
-.nav a {
+.nav {
 	clear: both;
+}
+
+.nav a {
 	font-size: 200%;
 	padding-left: 1em;
 	padding-right: 1em;
