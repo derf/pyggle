@@ -12,6 +12,17 @@ h1 {
 	margin-left: 1em;
 }
 
+.nav a {
+	clear: both;
+	font-size: 200%;
+	padding-left: 1em;
+	padding-right: 1em;
+}
+
+.nav a.this-file {
+	font-weight: bold;
+}
+
 div.image-container {
 	text-align: center;
 	float: left;
