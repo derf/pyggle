@@ -694,6 +694,7 @@ if __name__ == "__main__":
     if args.cdn:
         html_buf = html_buf.replace('href=".data/css/', f'href="{args.cdn}/css/')
         html_buf = html_buf.replace('src=".data/js/', f'src="{args.cdn}/js/')
+        html_buf = html_buf.replace("path = '.data/css/'", f"path = '{args.cdn}/css/'")
 
     if args.html_include:
         with open(args.html_include, "r") as f:
