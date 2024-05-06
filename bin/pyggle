@@ -614,7 +614,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--group",
         metavar="SEP",
-        choices=["none", "year-month", "year", "decade"],
+        choices=["none", "day", "year-month", "year", "decade"],
         default="none",
         help="Add captions to separate images by SEP",
     )
