@@ -790,11 +790,12 @@ if __name__ == "__main__":
 
     write_gallery(html_buf, "index.html", thumbnails, group=args.group)
 
-    if args.group_files:
+    if args.group_files != "none":
         thumbnail_keys = list(sorted(set(map(lambda t: t.file_key, thumbnails))))
         for thumbnail_key in thumbnail_keys:
             write_gallery(
                 html_buf,
                 f"{thumbnail_key}.html",
                 list(filter(lambda t: t.file_key == thumbnail_key, thumbnails)),
+                group=args.group,
             )
