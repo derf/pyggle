@@ -547,8 +547,12 @@ def copy_files(base_dir):
 
     boxwidth = f"{args.size * args.spacing}px"
     boxheight = f"{args.size * args.spacing}px"
-    imgwidth = f"{args.size}px"
-    imgheight = f"{args.size}px"
+    limgwidth = f"{args.size}px"
+    limgheight = f"{args.size}px"
+    mimgwidth = f"{args.size/2}px"
+    mimgheight = f"{args.size/2}px"
+    simgwidth = f"{args.size/3}px"
+    simgheight = f"{args.size/3}px"
 
     css_files = ["glightbox.min.css", "light.css", "dark.css"]
     js_files = ["glightbox.min.js"]
@@ -564,8 +568,12 @@ def copy_files(base_dir):
 
     main_css = main_css.replace("/* $boxwidth */", boxwidth)
     main_css = main_css.replace("/* $boxheight */", boxheight)
-    main_css = main_css.replace("/* $imgwidth */", imgwidth)
-    main_css = main_css.replace("/* $imgheight */", imgheight)
+    main_css = main_css.replace("/* $limgwidth */", limgwidth)
+    main_css = main_css.replace("/* $limgheight */", limgheight)
+    main_css = main_css.replace("/* $mimgwidth */", mimgwidth)
+    main_css = main_css.replace("/* $mimgheight */", mimgheight)
+    main_css = main_css.replace("/* $simgwidth */", simgwidth)
+    main_css = main_css.replace("/* $simgheight */", simgheight)
 
     with open(".data/css/main.css", "w") as f:
         f.write(main_css)

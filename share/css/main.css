@@ -7,9 +7,10 @@ a {
 }
 
 h1 {
+	font-size: 120%;
 	clear: both;
 	padding-top: 1em;
-	margin-left: 1em;
+	margin-left: 0.5em;
 }
 
 .nav {
@@ -42,9 +43,21 @@ div.image-container a {
 }
 
 div.image-container img {
-	height: /* $imgheight */;
+	height: /* $limgheight */;
 	margin: 0;
 	padding: 0;
+}
+
+@media (max-width: 992px) {
+	div.image-container img {
+		height: /* $mimgheight */;
+	}
+}
+
+@media (max-width: 600px) {
+	div.image-container img {
+		height: /* $simgheight */;
+	}
 }
 
 div.image-page {
