@@ -14,6 +14,13 @@ else. Features include:
 * Altering images for publication – note that these edit all files in place
   (`--scrub-metadata`, `--resize`, `--exif-copyright`)
 
+**NO MAINTENANCE INTENDED**
+
+pyggle exists to fill a gap in my personal workflow.
+It is available as open-source software because why not.
+I do not intend to address feature requests or bug reports unless I consider
+them interesting or relevant to my personal workflow.
+
 ## Demo
 
 See the galleries linked from
@@ -28,7 +35,7 @@ gallery in, while passing it some image files. I.e.:
 
 ```
 cd /some/directory
-/another/directory/python-image-gallery/bin/pyggle *.jpg
+/another/directory/pyggle/bin/pyggle *.jpg
 ```
 
 See `pyggle --help` for a list of options.
