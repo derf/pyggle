@@ -628,7 +628,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--edit-in-place",
         action="store_true",
-        help="Enable options that edit images in-place",
+        help="Enable options that alter the image files passed on the command line. The original can NOT be restored.",
     )
     parser.add_argument(
         "--exif-copyright",
