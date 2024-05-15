@@ -166,7 +166,9 @@ class ImageHTML:
         else:
             self.subject_distance = f"""<span class="subject-distance">∞</span>"""
 
-    def to_thumbnail_html(self, index, filename, thumbname, with_detail_page=False):
+    def to_thumbnail_html(
+        self, index, filename, thumbname, with_detail_page=False, jpegfile=None
+    ):
 
         if with_detail_page:
             self.focus = f"""<a href="{filename}.html">{self.focus}</a>"""
@@ -180,7 +182,7 @@ class ImageHTML:
         exif_html = """ <span class="sep">•</span> """.join(filter(bool, exif_lines))
 
         buf = """<div class="image-container">\n"""
-        buf += f"""<a href="{filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
+        buf += f"""<a href="{jpegfile or filename}" class="glightbox" data-gallery="gallery1" data-description=".gdesc{index}">"""
         buf += f"""<img src="{thumbname}" alt="{linktext}" />"""
         buf += "</a>"
         buf += "</div>"
@@ -256,6 +258,7 @@ class Thumbnail:
         file_key_template=None,
     ):
         self.filename = filename
+        self.jpegname = None
         self.size = size
         self.exif_dt = None
         self.gps = None
@@ -290,6 +293,24 @@ class Thumbnail:
         im.thumbnail((self.size * 4, self.size * 2))
         im = im.convert("RGB")
         im.save(self.thumbname, "JPEG")
+
+        if filename.lower().endswith(".cr2"):
+            try:
+                jpegname = f".thumbnails/{thumb_filename}.p.jpg"
+                subprocess.run(
+                    [
+                        "exiftool",
+                        "-quiet",
+                        "-binary",
+                        "-tagOut!",
+                        jpegname,
+                        "-PreviewImage",
+                        filename,
+                    ]
+                )
+                self.jpegname = jpegname
+            except FileNotFoundError:
+                pass
 
         if args.with_detail_page and 0:
             self.average_color = im.resize((1, 1)).getpixel((0, 0))
@@ -531,7 +552,11 @@ class Thumbnail:
 
     def to_html(self, index, with_detail_page=False):
         return self.html.to_thumbnail_html(
-            index, self.filename, self.thumbname, with_detail_page
+            index,
+            self.filename,
+            self.thumbname,
+            with_detail_page,
+            jpegfile=self.jpegname,
         )
 
     def to_detail_html(self, html_prefix, html_postfix):
