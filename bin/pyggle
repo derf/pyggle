@@ -16,6 +16,7 @@ from progress.bar import Bar
 import shutil
 import subprocess
 import sys
+import tempfile
 
 geocoder = None
 location_cache = dict()
@@ -294,7 +295,7 @@ class Thumbnail:
         im = im.convert("RGB")
         im.save(self.thumbname, "JPEG")
 
-        if filename.lower().endswith(".cr2"):
+        if filename.lower().endswith((".cr2", ".cr3")):
             try:
                 jpegname = f".thumbnails/{thumb_filename}.p.jpg"
                 subprocess.run(
@@ -305,6 +306,18 @@ class Thumbnail:
                         "-tagOut!",
                         jpegname,
                         "-PreviewImage",
+                        filename,
+                    ]
+                )
+                # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
+                subprocess.run(
+                    [
+                        "exiftool",
+                        "-quiet",
+                        "-binary",
+                        "-tagOut!",
+                        jpegname,
+                        "-JpgFromRaw",
                         filename,
                     ]
                 )
@@ -760,10 +773,49 @@ if __name__ == "__main__":
             try:
                 im = Image.open(f".thumbnail.for.{filename}")
             except FileNotFoundError:
-                continue
+                im = None
             except PIL.UnidentifiedImageError:
                 # perhaps raise a warning?
-                continue
+                im = None
+
+        if not im:
+            try:
+                _, jpegname = tempfile.mkstemp(suffix="jpg")
+                subprocess.run(
+                    [
+                        "exiftool",
+                        "-quiet",
+                        "-binary",
+                        "-tagOut!",
+                        jpegname,
+                        "-PreviewImage",
+                        filename,
+                    ]
+                )
+                # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
+                subprocess.run(
+                    [
+                        "exiftool",
+                        "-quiet",
+                        "-binary",
+                        "-tagOut!",
+                        jpegname,
+                        "-JpgFromRaw",
+                        filename,
+                    ]
+                )
+
+                im = Image.open(jpegname)
+                os.remove(jpegname)
+            except FileNotFoundError:
+                im = None
+            except PIL.UnidentifiedImageError:
+                # perhaps raise a warning?
+                os.remove(jpegname)
+                im = None
+
+        if not im:
+            continue
 
         try:
             im_copy = im.copy()
