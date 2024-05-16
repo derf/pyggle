@@ -295,7 +295,7 @@ class Thumbnail:
         im = im.convert("RGB")
         im.save(self.thumbname, "JPEG")
 
-        if filename.lower().endswith((".cr2", ".cr3")):
+        if filename.lower().endswith((".cr2", ".cr3", ".rw2")):
             try:
                 jpegname = f".thumbnails/{thumb_filename}.p.jpg"
                 subprocess.run(
