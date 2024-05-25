@@ -38,6 +38,35 @@ def rotate_image(image, exif_tag):
     return image
 
 
+def rotate_preview(filename, exif_tag):
+    if "Image Orientation" not in exif_tag:
+        return
+
+    orientation = exif_tag["Image Orientation"].values
+    rotation = None
+
+    if 3 in orientation:
+        rotation = "-1"
+    if 6 in orientation:
+        rotation = "-9"
+    if 8 in orientation:
+        rotation = "-2"
+
+    if not rotation:
+        return
+
+    subprocess.run(
+        [
+            "exiftran",
+            "-i",
+            rotation,
+            filename,
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def format_f(value, precision=1):
     if value % 1 == 0:
         return f"{value:.0f}"
@@ -290,7 +319,9 @@ class Thumbnail:
         if not self.thumbname.lower().endswith((".jpeg", ".jpg")):
             self.thumbname += ".jpg"
 
-        im = rotate_image(im, self.exif_tag)
+        if not filename.lower().endswith((".cr2", ".cr3", ".rw2")):
+            im = rotate_image(im, self.exif_tag)
+
         im.thumbnail((self.size * 4, self.size * 2))
         im = im.convert("RGB")
         im.save(self.thumbname, "JPEG")
@@ -322,6 +353,7 @@ class Thumbnail:
                     ]
                 )
                 self.jpegname = jpegname
+                rotate_preview(jpegname, self.exif_tag)
             except FileNotFoundError:
                 pass
 
