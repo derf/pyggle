@@ -314,48 +314,62 @@ class Thumbnail:
         except FileNotFoundError:
             pass
 
-        thumb_filename = filename.replace("/", "-")
-        self.thumbname = f".thumbnails/{thumb_filename}"
-        if not self.thumbname.lower().endswith((".jpeg", ".jpg")):
-            self.thumbname += ".jpg"
+        have_subthumb = False
 
-        if not filename.lower().endswith((".cr2", ".cr3", ".rw2")):
-            im = rotate_image(im, self.exif_tag)
+        if "/" in filename:
+            sub_dirname, sub_filename = filename.rsplit("/", 1)
+            sub_thumbname = sub_filename
+            if not sub_thumbname.lower().endswith((".jpeg", ".jpg")):
+                sub_thumbname += ".jpg"
+            if os.path.exists(f"{sub_dirname}/.thumbnails/{sub_thumbname}"):
+                self.thumbname = f"{sub_dirname}/.thumbnails/{sub_thumbname}"
+                have_subthumb = True
+            if os.path.exists(f"{sub_dirname}/.thumbnails/{sub_filename}.p.jpg"):
+                self.jpegname = f"{sub_dirname}/.thumbnails/{sub_filename}"
 
-        im.thumbnail((self.size * 4, self.size * 2))
-        im = im.convert("RGB")
-        im.save(self.thumbname, "JPEG")
+        if not have_subthumb:
+            thumb_filename = filename.replace("/", "-")
+            self.thumbname = f".thumbnails/{thumb_filename}"
+            if not self.thumbname.lower().endswith((".jpeg", ".jpg")):
+                self.thumbname += ".jpg"
 
-        if filename.lower().endswith((".cr2", ".cr3", ".rw2")):
-            try:
-                jpegname = f".thumbnails/{thumb_filename}.p.jpg"
-                subprocess.run(
-                    [
-                        "exiftool",
-                        "-quiet",
-                        "-binary",
-                        "-tagOut!",
-                        jpegname,
-                        "-PreviewImage",
-                        filename,
-                    ]
-                )
-                # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
-                subprocess.run(
-                    [
-                        "exiftool",
-                        "-quiet",
-                        "-binary",
-                        "-tagOut!",
-                        jpegname,
-                        "-JpgFromRaw",
-                        filename,
-                    ]
-                )
-                self.jpegname = jpegname
-                rotate_preview(jpegname, self.exif_tag)
-            except FileNotFoundError:
-                pass
+            if not filename.lower().endswith((".cr2", ".cr3", ".rw2")):
+                im = rotate_image(im, self.exif_tag)
+
+            im.thumbnail((self.size * 4, self.size * 2))
+            im = im.convert("RGB")
+            im.save(self.thumbname, "JPEG")
+
+            if filename.lower().endswith((".cr2", ".cr3", ".rw2")):
+                try:
+                    jpegname = f".thumbnails/{thumb_filename}.p.jpg"
+                    subprocess.run(
+                        [
+                            "exiftool",
+                            "-quiet",
+                            "-binary",
+                            "-tagOut!",
+                            jpegname,
+                            "-PreviewImage",
+                            filename,
+                        ]
+                    )
+                    # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
+                    subprocess.run(
+                        [
+                            "exiftool",
+                            "-quiet",
+                            "-binary",
+                            "-tagOut!",
+                            jpegname,
+                            "-JpgFromRaw",
+                            filename,
+                        ]
+                    )
+                    self.jpegname = jpegname
+                    rotate_preview(jpegname, self.exif_tag)
+                except FileNotFoundError:
+                    pass
 
         if args.with_detail_page and 0:
             self.average_color = im.resize((1, 1)).getpixel((0, 0))
