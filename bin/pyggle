@@ -943,6 +943,16 @@ if __name__ == "__main__":
         for thumbnail in thumbnails:
             with open(f"{base_dir}/share/html_detail_start", "r") as f:
                 detail_html_start = f.read()
+                if args.cdn:
+                    detail_html_start = detail_html_start.replace(
+                        'href=".data/css/', f'href="{args.cdn}/css/'
+                    )
+                    detail_html_start = detail_html_start.replace(
+                        'src=".data/js/', f'src="{args.cdn}/js/'
+                    )
+                    detail_html_start = detail_html_start.replace(
+                        "path = '.data/css/'", f"path = '{args.cdn}/css/'"
+                    )
             with open(f"{base_dir}/share/html_detail_end", "r") as f:
                 detail_html_end = f.read()
             for thumbnail in thumbnails:
