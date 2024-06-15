@@ -286,6 +286,7 @@ class Thumbnail:
         with_gps=False,
         group_key_template=None,
         file_key_template=None,
+        have_thumbnail=dict(),
     ):
         self.filename = filename
         self.jpegname = None
@@ -333,43 +334,45 @@ class Thumbnail:
             if not self.thumbname.lower().endswith((".jpeg", ".jpg")):
                 self.thumbname += ".jpg"
 
-            if not filename.lower().endswith((".cr2", ".cr3", ".rw2")):
-                im = rotate_image(im, self.exif_tag)
+            if not have_thumbnail.pop(self.thumbname, False):
+                if not filename.lower().endswith((".cr2", ".cr3", ".rw2")):
+                    im = rotate_image(im, self.exif_tag)
 
-            im.thumbnail((self.size * 4, self.size * 2))
-            im = im.convert("RGB")
-            im.save(self.thumbname, "JPEG")
+                im.thumbnail((self.size * 4, self.size * 2))
+                im = im.convert("RGB")
+                im.save(self.thumbname, "JPEG")
 
-            if filename.lower().endswith((".cr2", ".cr3", ".rw2")):
-                try:
-                    jpegname = f".thumbnails/{thumb_filename}.p.jpg"
-                    subprocess.run(
-                        [
-                            "exiftool",
-                            "-quiet",
-                            "-binary",
-                            "-tagOut!",
-                            jpegname,
-                            "-PreviewImage",
-                            filename,
-                        ]
-                    )
-                    # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
-                    subprocess.run(
-                        [
-                            "exiftool",
-                            "-quiet",
-                            "-binary",
-                            "-tagOut!",
-                            jpegname,
-                            "-JpgFromRaw",
-                            filename,
-                        ]
-                    )
-                    self.jpegname = jpegname
-                    rotate_preview(jpegname, self.exif_tag)
-                except FileNotFoundError:
-                    pass
+                if filename.lower().endswith((".cr2", ".cr3", ".rw2")):
+                    try:
+                        jpegname = f".thumbnails/{thumb_filename}.p.jpg"
+                        subprocess.run(
+                            [
+                                "exiftool",
+                                "-quiet",
+                                "-binary",
+                                "-tagOut!",
+                                jpegname,
+                                "-PreviewImage",
+                                filename,
+                            ]
+                        )
+                        # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
+                        subprocess.run(
+                            [
+                                "exiftool",
+                                "-quiet",
+                                "-binary",
+                                "-tagOut!",
+                                jpegname,
+                                "-JpgFromRaw",
+                                filename,
+                            ]
+                        )
+                        self.jpegname = jpegname
+                        rotate_preview(jpegname, self.exif_tag)
+                        have_thumbnail.pop(self.jpegname, None)
+                    except FileNotFoundError:
+                        pass
 
         if args.with_detail_page and 0:
             self.average_color = im.resize((1, 1)).getpixel((0, 0))
@@ -794,6 +797,10 @@ if __name__ == "__main__":
 
     os.makedirs(".thumbnails", exist_ok=True)
 
+    rm_thumbnail = dict(
+        map(lambda k: (".thumbnails/" + k, 1), os.listdir(".thumbnails"))
+    )
+
     if not args.cdn:
         copy_files(f"{base_dir}/share")
 
@@ -876,6 +883,7 @@ if __name__ == "__main__":
             with_gps=args.with_nominatim,
             group_key_template=args.group,
             file_key_template=args.group_files,
+            have_thumbnail=rm_thumbnail,
         )
         thumbnails.append(thumbnail)
 
@@ -922,6 +930,9 @@ if __name__ == "__main__":
                 + exiftool_args
                 + [filename]
             )
+
+    for rm_file in rm_thumbnail.keys():
+        os.remove(rm_file)
 
     if args.sort == "time":
         thumbnails = list(
