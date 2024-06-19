@@ -667,18 +667,22 @@ def copy_files(base_dir):
 
 
 def write_gallery(
-    file_buf, filename, thumbnails, group=None, files=list(), this_file=None
+    file_buf,
+    filename,
+    thumbnails,
+    group=None,
+    this_file=None,
+    prev_file=None,
+    next_file=None,
 ):
 
-    if files:
+    if prev_file or next_file:
         nav_buf = '<div class="nav">'
-        for link_target in files:
-            link_class = ""
-            if link_target == this_file:
-                link_class = "this-file"
-            nav_buf += (
-                f'<a class="{link_class}" href="{link_target}.html">{link_target}</a>\n'
-            )
+        if prev_file:
+            nav_buf += f'<a href="{prev_file}-r.html">{prev_file}</a>\n'
+        nav_buf += f'<a class="this-file" href="{this_file}.html">{this_file}</a>\n'
+        if next_file:
+            nav_buf += f'<a href="{next_file}.html">{next_file}</a>\n'
         nav_buf += "</div>"
         file_buf += nav_buf
 
@@ -689,7 +693,14 @@ def write_gallery(
             prev_heading = thumbnail.group_key
         file_buf += thumbnail.to_html(i, args.with_detail_page)
 
-    if files:
+    if prev_file or next_file:
+        nav_buf = '<div class="nav">'
+        if prev_file:
+            nav_buf += f'<a href="{prev_file}-r.html">{prev_file}</a>\n'
+        nav_buf += f'<a class="this-file" href="{this_file}.html">{this_file}</a>\n'
+        if next_file:
+            nav_buf += f'<a href="{next_file}.html">{next_file}</a>\n'
+        nav_buf += "</div>"
         file_buf += nav_buf
 
     with open(f"{base_dir}/share/html_end", "r") as f:
@@ -962,12 +973,26 @@ if __name__ == "__main__":
 
     if args.group_files != "none":
         thumbnail_keys = list(sorted(set(map(lambda t: t.file_key, thumbnails))))
-        for thumbnail_key in thumbnail_keys:
+        for i, thumbnail_key in enumerate(thumbnail_keys):
+            prev_key = i > 0 and thumbnail_keys[i - 1] or None
+            next_key = i + 1 < len(thumbnail_keys) and thumbnail_keys[i + 1] or None
             write_gallery(
                 html_buf,
                 f"{thumbnail_key}.html",
                 list(filter(lambda t: t.file_key == thumbnail_key, thumbnails)),
                 group=args.group,
-                files=thumbnail_keys,
                 this_file=thumbnail_key,
+                prev_file=prev_key,
+                next_file=next_key,
+            )
+            write_gallery(
+                html_buf,
+                f"{thumbnail_key}-r.html",
+                reversed(
+                    list(filter(lambda t: t.file_key == thumbnail_key, thumbnails))
+                ),
+                group=args.group,
+                this_file=thumbnail_key,
+                prev_file=prev_key,
+                next_file=next_key,
             )
