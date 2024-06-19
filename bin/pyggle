@@ -370,9 +370,10 @@ class Thumbnail:
                         )
                         self.jpegname = jpegname
                         rotate_preview(jpegname, self.exif_tag)
-                        have_thumbnail.pop(self.jpegname, None)
                     except FileNotFoundError:
                         pass
+            elif have_thumbnail.pop(f".thumbnails/{thumb_filename}.p.jpg", None):
+                self.jpegname = f".thumbnails/{thumb_filename}.p.jpg"
 
         if args.with_detail_page and 0:
             self.average_color = im.resize((1, 1)).getpixel((0, 0))
