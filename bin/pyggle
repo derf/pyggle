@@ -326,7 +326,7 @@ class Thumbnail:
                 self.thumbname = f"{sub_dirname}/.thumbnails/{sub_thumbname}"
                 have_subthumb = True
             if os.path.exists(f"{sub_dirname}/.thumbnails/{sub_filename}.p.jpg"):
-                self.jpegname = f"{sub_dirname}/.thumbnails/{sub_filename}"
+                self.jpegname = f"{sub_dirname}/.thumbnails/{sub_filename}.p.jpg"
 
         if not have_subthumb:
             thumb_filename = filename.replace("/", "-")
