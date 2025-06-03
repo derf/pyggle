@@ -761,6 +761,7 @@ if __name__ == "__main__":
         default=16,
         help="Zoom Level for reverse geocoding",
     )
+    parser.add_argument("--quiet", action="store_true", help="Do not show progress bar")
     parser.add_argument(
         "--resize",
         metavar="N",
@@ -831,7 +832,12 @@ if __name__ == "__main__":
     filenames = args.images
     thumbnails = list()
 
-    for i, filename in enumerate(ProgressBar(max=len(filenames)).iter(filenames)):
+    if args.quiet:
+        file_iter = filenames
+    else:
+        file_iter = ProgressBar(max=len(filenames)).iter(filenames)
+
+    for i, filename in enumerate(file_iter):
         try:
             im = Image.open(filename)
         except PIL.UnidentifiedImageError:
