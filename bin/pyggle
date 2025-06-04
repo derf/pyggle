@@ -568,10 +568,12 @@ class Thumbnail:
         global location_cache
         global geocoder
 
-        latlon = f"{lat:.3f}/{lon:.3f}"
+        latlon = f"{lat:.4f}/{lon:.4f}"
 
-        if latlon in location_cache:
-            self.gps = GPSData(lat, lon, location_cache[latlon])
+        if str(args.nominatim_zoom) in location_cache.get(latlon, dict()):
+            self.gps = GPSData(
+                lat, lon, location_cache[latlon][str(args.nominatim_zoom)]
+            )
             self.html.set_gps(self.gps)
             return
 
@@ -584,7 +586,9 @@ class Thumbnail:
         try:
             res = geocoder.reverse((lat, lon), zoom=args.nominatim_zoom)
             location = res.address.split(",")[0]
-            location_cache[latlon] = location
+            if latlon not in location_cache:
+                location_cache[latlon] = dict()
+            location_cache[latlon][str(args.nominatim_zoom)] = location
         except TypeError as e:
             location = latlon
 
@@ -817,6 +821,10 @@ if __name__ == "__main__":
     if not args.cdn:
         copy_files(f"{base_dir}/share")
 
+    if args.with_nominatim and os.path.exists(".thumbnails/location_cache.json"):
+        with open(".thumbnails/location_cache.json", "r") as f:
+            location_cache = json.load(f)
+
     with open(f"{base_dir}/share/html_start", "r") as f:
         html_buf = f.read().replace("<!-- $title -->", args.title)
 
@@ -977,6 +985,10 @@ if __name__ == "__main__":
                 thumbnail.to_detail_html(detail_html_start, detail_html_end)
 
     write_gallery(html_buf, "index.html", thumbnails, group=args.group)
+
+    if args.with_nominatim:
+        with open(".thumbnails/location_cache.json", "w") as f:
+            json.dump(location_cache, f)
 
     if args.group_files != "none":
         thumbnail_keys = list(sorted(set(map(lambda t: t.file_key, thumbnails))))
