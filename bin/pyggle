@@ -777,6 +777,15 @@ def _make_thumbnail(args):
         print(f"Cannot load image '{filename}': {e}", file=sys.stderr)
         return None, None
 
+    thumbnail = Thumbnail(
+        filename,
+        im_copy,
+        size=args.size,
+        group_key_template=args.group,
+        file_key_template=args.group_files,
+        **thumb_arg,
+    )
+
     if (
         args.edit_in_place
         and args.resize
@@ -790,16 +799,6 @@ def _make_thumbnail(args):
                 filename,
             ]
         )
-
-    thumbnail = Thumbnail(
-        filename,
-        im_copy,
-        size=args.size,
-        with_gps=args.with_nominatim,
-        group_key_template=args.group,
-        file_key_template=args.group_files,
-        **thumb_arg,
-    )
 
     exiftool_args = list()
 
@@ -966,6 +965,8 @@ if __name__ == "__main__":
 
     for filename, thumbnail in raw_thumbnails:
         if thumbnail is not None:
+            if args.with_nominatim:
+                thumbnail._get_gps()
             thumbnails.append(thumbnail)
             for kept_thumbnail in thumbnail.kept_thumbnails:
                 rm_thumbnail.pop(kept_thumbnail)
