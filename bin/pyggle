@@ -11,8 +11,8 @@ import exifread
 import json
 import os
 import PIL
+from multiprocessing import Pool
 from PIL import Image
-from progress.bar import Bar
 import shutil
 import subprocess
 import sys
@@ -71,10 +71,6 @@ def format_f(value, precision=1):
     if value % 1 == 0:
         return f"{value:.0f}"
     return f"{value:.{precision}f}"
-
-
-class ProgressBar(Bar):
-    suffix = "%(percent).0f%% [%(elapsed_td)s/%(eta_td)s]"
 
 
 class GPSData:
@@ -410,7 +406,7 @@ class Thumbnail:
 
     def _get_caption(self):
         try:
-            with open(f".captions/{filename}.txt", "r") as f:
+            with open(f".captions/{self.filename}.txt", "r") as f:
                 self.html.set_caption(f.read())
         except FileNotFoundError:
             pass
@@ -715,6 +711,119 @@ def write_gallery(
         f.write(file_buf)
 
 
+def _make_thumbnail(filename):
+    try:
+        im = Image.open(filename)
+    except PIL.UnidentifiedImageError:
+        try:
+            im = Image.open(f".thumbnail.for.{filename}")
+        except FileNotFoundError:
+            im = None
+        except PIL.UnidentifiedImageError:
+            # perhaps raise a warning?
+            im = None
+
+    if not im:
+        try:
+            _, jpegname = tempfile.mkstemp(suffix="jpg")
+            subprocess.run(
+                [
+                    "exiftool",
+                    "-quiet",
+                    "-binary",
+                    "-tagOut!",
+                    jpegname,
+                    "-PreviewImage",
+                    filename,
+                ]
+            )
+            # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
+            subprocess.run(
+                [
+                    "exiftool",
+                    "-quiet",
+                    "-binary",
+                    "-tagOut!",
+                    jpegname,
+                    "-JpgFromRaw",
+                    filename,
+                ]
+            )
+
+            im = Image.open(jpegname)
+            os.remove(jpegname)
+        except FileNotFoundError:
+            im = None
+        except PIL.UnidentifiedImageError:
+            # perhaps raise a warning?
+            os.remove(jpegname)
+            im = None
+
+    if not im:
+        return None, None
+
+    try:
+        im_copy = im.copy()
+    except Exception as e:
+        print(f"Cannot load image '{filename}': {e}", file=sys.stderr)
+        return None, None
+
+    if (
+        args.edit_in_place
+        and args.resize
+        and (im.size[0] > args.resize or im.size[1] > args.resize)
+    ):
+        subprocess.run(
+            [
+                "mogrify",
+                "-resize",
+                f"{args.resize}x{args.resize}",
+                filename,
+            ]
+        )
+
+    exiftool_args = list()
+
+    if args.caption_to_exif and thumbnail.html.caption:
+        exiftool_args.append(f"-File:Comment={thumbnail.html.caption}")
+
+    if args.exif_copyright:
+        exiftool_args.append(f"-EXIF:Copyright={args.exif_copyright}")
+
+    if args.scrub_metadata:
+        exiftool_args.extend(
+            [
+                "-EXIF:SerialNumber=",
+                "-EXIF:LensSerialNumber=",
+                "-Makernotes:all=",
+                "-geotag=",
+                "-ThumbnailImage=",
+            ]
+        )
+
+    if args.edit_in_place and exiftool_args:
+        subprocess.run(
+            [
+                "exiftool",
+                "-q",
+                "-overwrite_original",
+            ]
+            + exiftool_args
+            + [filename]
+        )
+
+    thumbnail = Thumbnail(
+        filename,
+        im_copy,
+        size=args.size,
+        with_gps=args.with_nominatim,
+        group_key_template=args.group,
+        file_key_template=args.group_files,
+        have_thumbnail=rm_thumbnail,
+    )
+    return (filename, thumbnail)
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -765,7 +874,6 @@ if __name__ == "__main__":
         default=16,
         help="Zoom Level for reverse geocoding",
     )
-    parser.add_argument("--quiet", action="store_true", help="Do not show progress bar")
     parser.add_argument(
         "--resize",
         metavar="N",
@@ -840,122 +948,12 @@ if __name__ == "__main__":
     filenames = args.images
     thumbnails = list()
 
-    if args.quiet:
-        file_iter = filenames
-    else:
-        file_iter = ProgressBar(max=len(filenames)).iter(filenames)
+    with Pool() as pool:
+        raw_thumbnails = pool.map(_make_thumbnail, filenames)
 
-    for i, filename in enumerate(file_iter):
-        try:
-            im = Image.open(filename)
-        except PIL.UnidentifiedImageError:
-            try:
-                im = Image.open(f".thumbnail.for.{filename}")
-            except FileNotFoundError:
-                im = None
-            except PIL.UnidentifiedImageError:
-                # perhaps raise a warning?
-                im = None
-
-        if not im:
-            try:
-                _, jpegname = tempfile.mkstemp(suffix="jpg")
-                subprocess.run(
-                    [
-                        "exiftool",
-                        "-quiet",
-                        "-binary",
-                        "-tagOut!",
-                        jpegname,
-                        "-PreviewImage",
-                        filename,
-                    ]
-                )
-                # JpgFromRaw tends to have higher resolution, so overwrite PreviewImage if it is present
-                subprocess.run(
-                    [
-                        "exiftool",
-                        "-quiet",
-                        "-binary",
-                        "-tagOut!",
-                        jpegname,
-                        "-JpgFromRaw",
-                        filename,
-                    ]
-                )
-
-                im = Image.open(jpegname)
-                os.remove(jpegname)
-            except FileNotFoundError:
-                im = None
-            except PIL.UnidentifiedImageError:
-                # perhaps raise a warning?
-                os.remove(jpegname)
-                im = None
-
-        if not im:
-            continue
-
-        try:
-            im_copy = im.copy()
-        except Exception as e:
-            print(f"Cannot load image '{filename}': {e}", file=sys.stderr)
-            continue
-
-        thumbnail = Thumbnail(
-            filename,
-            im_copy,
-            size=args.size,
-            with_gps=args.with_nominatim,
-            group_key_template=args.group,
-            file_key_template=args.group_files,
-            have_thumbnail=rm_thumbnail,
-        )
-        thumbnails.append(thumbnail)
-
-        if (
-            args.edit_in_place
-            and args.resize
-            and (im.size[0] > args.resize or im.size[1] > args.resize)
-        ):
-            subprocess.run(
-                [
-                    "mogrify",
-                    "-resize",
-                    f"{args.resize}x{args.resize}",
-                    filename,
-                ]
-            )
-
-        exiftool_args = list()
-
-        if args.caption_to_exif and thumbnail.html.caption:
-            exiftool_args.append(f"-File:Comment={thumbnail.html.caption}")
-
-        if args.exif_copyright:
-            exiftool_args.append(f"-EXIF:Copyright={args.exif_copyright}")
-
-        if args.scrub_metadata:
-            exiftool_args.extend(
-                [
-                    "-EXIF:SerialNumber=",
-                    "-EXIF:LensSerialNumber=",
-                    "-Makernotes:all=",
-                    "-geotag=",
-                    "-ThumbnailImage=",
-                ]
-            )
-
-        if args.edit_in_place and exiftool_args:
-            subprocess.run(
-                [
-                    "exiftool",
-                    "-q",
-                    "-overwrite_original",
-                ]
-                + exiftool_args
-                + [filename]
-            )
+    for filename, thumbnail in raw_thumbnails:
+        if thumbnail is not None:
+            thumbnails.append(thumbnail)
 
     for rm_file in rm_thumbnail.keys():
         os.remove(rm_file)
