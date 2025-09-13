@@ -292,6 +292,8 @@ class Thumbnail:
         self.group_key = None
         self.file_key = None
 
+        self.kept_thumbnails = list()
+
         with open(filename, "rb") as f:
             try:
                 self.exif_tag = exifread.process_file(f)
@@ -330,7 +332,13 @@ class Thumbnail:
             if not self.thumbname.lower().endswith((".jpeg", ".jpg")):
                 self.thumbname += ".jpg"
 
-            if not have_thumbnail.pop(self.thumbname, False):
+            if have_thumbnail.pop(f".thumbnails/{thumb_filename}.p.jpg", None):
+                self.jpegname = f".thumbnails/{thumb_filename}.p.jpg"
+                self.kept_thumbnails.append(self.jpegname)
+
+            if have_thumbnail.pop(self.thumbname, False):
+                self.kept_thumbnails.append(self.thumbname)
+            else:
                 if not filename.lower().endswith((".cr2", ".cr3", ".rw2")):
                     im = rotate_image(im, self.exif_tag)
 
@@ -338,7 +346,9 @@ class Thumbnail:
                 im = im.convert("RGB")
                 im.save(self.thumbname, "JPEG")
 
-                if filename.lower().endswith((".cr2", ".cr3", ".rw2")):
+                if not self.jpegname and filename.lower().endswith(
+                    (".cr2", ".cr3", ".rw2")
+                ):
                     try:
                         jpegname = f".thumbnails/{thumb_filename}.p.jpg"
                         subprocess.run(
@@ -368,8 +378,6 @@ class Thumbnail:
                         rotate_preview(jpegname, self.exif_tag)
                     except FileNotFoundError:
                         pass
-            elif have_thumbnail.pop(f".thumbnails/{thumb_filename}.p.jpg", None):
-                self.jpegname = f".thumbnails/{thumb_filename}.p.jpg"
 
         if args.with_detail_page and 0:
             self.average_color = im.resize((1, 1)).getpixel((0, 0))
@@ -711,7 +719,8 @@ def write_gallery(
         f.write(file_buf)
 
 
-def _make_thumbnail(filename):
+def _make_thumbnail(args):
+    filename, args, thumb_arg = args
     try:
         im = Image.open(filename)
     except PIL.UnidentifiedImageError:
@@ -782,6 +791,16 @@ def _make_thumbnail(filename):
             ]
         )
 
+    thumbnail = Thumbnail(
+        filename,
+        im_copy,
+        size=args.size,
+        with_gps=args.with_nominatim,
+        group_key_template=args.group,
+        file_key_template=args.group_files,
+        **thumb_arg,
+    )
+
     exiftool_args = list()
 
     if args.caption_to_exif and thumbnail.html.caption:
@@ -812,15 +831,6 @@ def _make_thumbnail(filename):
             + [filename]
         )
 
-    thumbnail = Thumbnail(
-        filename,
-        im_copy,
-        size=args.size,
-        with_gps=args.with_nominatim,
-        group_key_template=args.group,
-        file_key_template=args.group_files,
-        have_thumbnail=rm_thumbnail,
-    )
     return (filename, thumbnail)
 
 
@@ -948,12 +958,17 @@ if __name__ == "__main__":
     filenames = args.images
     thumbnails = list()
 
+    mkthumb_args = list(
+        map(lambda fn: (fn, args, {"have_thumbnail": rm_thumbnail}), filenames)
+    )
     with Pool() as pool:
-        raw_thumbnails = pool.map(_make_thumbnail, filenames)
+        raw_thumbnails = pool.map(_make_thumbnail, mkthumb_args)
 
     for filename, thumbnail in raw_thumbnails:
         if thumbnail is not None:
             thumbnails.append(thumbnail)
+            for kept_thumbnail in thumbnail.kept_thumbnails:
+                rm_thumbnail.pop(kept_thumbnail)
 
     for rm_file in rm_thumbnail.keys():
         os.remove(rm_file)
