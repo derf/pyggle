@@ -137,7 +137,7 @@ class ImageHTML:
         self, f_num, exposure, focal_length, focal_length35, crop_factor, iso
     ):
         entries = list()
-        if f_num is not None:
+        if f_num is not None and float(f_num) > 0:
             self.f_num = f"""<span class="fnumber">f/{format_f(f_num)}</span>"""
             entries.append(self.f_num)
 
@@ -156,7 +156,7 @@ class ImageHTML:
                 )
             entries.append(self.exposure)
 
-        if focal_length is not None:
+        if focal_length is not None and float(focal_length) > 0:
             entry = f"{format_f(focal_length)}mm"
             if focal_length35 is not None and focal_length35 != focal_length:
                 entry += f" (≙ {format_f(focal_length35)}mm)"
@@ -595,6 +595,9 @@ class Thumbnail:
             location_cache[latlon][str(args.nominatim_zoom)] = location
         except TypeError as e:
             location = latlon
+        except Exception as e:
+            print(e)
+            return
 
         self.gps = GPSData(lat, lon, location)
         self.html.set_gps(self.gps)
@@ -613,7 +616,7 @@ class Thumbnail:
 
         try:
             lens = self.exif_tag["EXIF LensModel"]
-            if lens:
+            if lens and str(lens):
                 model += f" + {lens}"
         except KeyError:
             # Unknown or built-in lens
