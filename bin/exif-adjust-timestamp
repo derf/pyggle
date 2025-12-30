@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+# vim:tabstop=4 softtabstop=4 shiftwidth=4 textwidth=160 smarttab expandtab colorcolumn=160
+#
+# Copyright (C) 2025 Birte Kristina Friesel
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
+from datetime import datetime, timedelta
+import argparse
+import json
+import subprocess
+import sys
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__
+    )
+
+    parser.add_argument("delta", type=int, help="Time delta [minutes]")
+    parser.add_argument("images", type=str, nargs="+")
+
+    args = parser.parse_args()
+    delta = timedelta(minutes=args.delta)
+
+    for filename in args.images:
+        data = dict()
+        try:
+            exiftool = subprocess.run(
+                [
+                    "exiftool",
+                    "-json",
+                    "-d",
+                    "%s",
+                    "-escapeHTML",
+                    "-groupNames",
+                    filename,
+                ],
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+            if exiftool.returncode == 0:
+                data = json.loads(exiftool.stdout)[0]
+        except FileNotFoundError:
+            pass
+
+        old_timestamp = datetime.fromtimestamp(int(data["EXIF:DateTimeOriginal"]))
+        new_timestamp = old_timestamp + delta
+
+        print(f"{filename} : {old_timestamp} → {new_timestamp}")
+        exiftool_cmd = [
+            "exiftool",
+            "-P",
+            "-EXIF:DateTimeOriginal=" + str(new_timestamp),
+            filename,
+        ]
+
+        try:
+            subprocess.run(
+                exiftool_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Cannot to write exif tags for {filename}: {exiftool_cmd} returned {e.returncode}"
+            )
+            print(f"exiftool stdout:\n{e.stdout}\n")
+            print(f"exiftool stderr:\n{e.stdout}\n")
