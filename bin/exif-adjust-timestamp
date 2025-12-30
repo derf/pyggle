@@ -18,7 +18,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("delta", type=int, help="Time delta [minutes]")
-    parser.add_argument("images", type=str, nargs="+")
+    parser.add_argument(
+        "images",
+        type=str,
+        nargs="+",
+        help="Image files to alter EXIF DateTimeOriginal in",
+    )
 
     args = parser.parse_args()
     delta = timedelta(minutes=args.delta)
