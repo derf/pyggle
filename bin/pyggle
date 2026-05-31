@@ -231,20 +231,20 @@ class ImageHTML:
         buf += "<p><table>\n"
 
         if self.datetime:
-            buf += f"<tr><th>Zeit</th><td>{self.datetime}</td></tr>\n"
+            buf += f"<tr><th>Time</th><td>{self.datetime}</td></tr>\n"
         if self.gps:
-            buf += f"<tr><th>Ort</th><td>{self.gps}</td></tr>\n"
+            buf += f"<tr><th>Place</th><td>{self.gps}</td></tr>\n"
         if self.make:
-            buf += f"<tr><th>Kamera</th><td>{self.make}</td></tr>\n"
+            buf += f"<tr><th>Camera</th><td>{self.make}</td></tr>\n"
         buf += "<tr><th></th><td>&nbsp;</td></tr>\n"
         if self.f_num:
-            buf += f"<tr><th>Blende</th><td>{self.f_num}</td></tr>\n"
+            buf += f"<tr><th>Aperture</th><td>{self.f_num}</td></tr>\n"
         if self.exposure:
-            buf += f"<tr><th>Belichtung</th><td>{self.exposure}</td></tr>\n"
+            buf += f"<tr><th>Exposure</th><td>{self.exposure}</td></tr>\n"
         if self.iso:
             buf += f"<tr><th>ISO</th><td>{self.iso}</td></tr>\n"
         if self.focal_length:
-            buf += f"<tr><th>Brennweite</th><td>{self.focal_length}</td></tr>\n"
+            buf += f"<tr><th>Focal Length</th><td>{self.focal_length}</td></tr>\n"
         if self.ev or self.lv:
             if self.ev and self.lv:
                 text = f"{self.lv} / {self.ev}"
@@ -252,20 +252,20 @@ class ImageHTML:
                 text = self.ev
             elif self.lv:
                 text = self.lv
-            buf += f"<tr><th>Helligkeit</th><td>{text}</td></tr>\n"
+            buf += f"<tr><th>Brightness</th><td>{text}</td></tr>\n"
         buf += "<tr><th></th><td>&nbsp;</td></tr>\n"
         if self.exposure_program:
-            buf += f"<tr><th>Modus</th><td>{self.exposure_program}</td></tr>\n"
+            buf += f"<tr><th>Mode</th><td>{self.exposure_program}</td></tr>\n"
         if self.exposure_mode:
-            buf += f"<tr><th>Belichtung</th><td>{self.exposure_mode}</td></tr>\n"
+            buf += f"<tr><th>Exposure</th><td>{self.exposure_mode}</td></tr>\n"
         if self.focus_mode:
-            buf += f"<tr><th>Fokus</th><td>{self.focus_mode}</td></tr>\n"
+            buf += f"<tr><th>Focus</th><td>{self.focus_mode}</td></tr>\n"
         if self.subject_distance:
-            buf += f"<tr><th>Entfernung</th><td>{self.subject_distance}</td></tr>\n"
+            buf += f"<tr><th>Subject Distance</th><td>{self.subject_distance}</td></tr>\n"
         if self.focus_distance:
-            buf += f"<tr><th>Schärfebereich</th><td>{self.focus_distance}</td></tr>\n"
+            buf += f"<tr><th>Focus distance</th><td>{self.focus_distance}</td></tr>\n"
         if self.flash:
-            buf += f"<tr><th>Blitz</th><td>{self.flash}</td></tr>\n"
+            buf += f"<tr><th>Flash</th><td>{self.flash}</td></tr>\n"
         if self.software:
             buf += f"<tr><th>Software</th><td>{self.software}</td></tr>\n"
         buf += "</table></p></div>\n"
