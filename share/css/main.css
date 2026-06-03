@@ -80,6 +80,21 @@ div.image-details th {
 	text-align: left;
 }
 
+.gslide-description {
+	padding-top: 0!important;
+	padding-bottom: 0.2em!important;
+	bottom: 0!important;
+}
+
+.gdesc-inner {
+	padding-top: 0!important;
+	padding-bottom: 0!important;
+}
+
+.gslide-desc p {
+	margin-top: 0.2em;
+}
+
 .gslide-desc p span {
 	padding-left: 0.2em;
 	padding-right: 0.2em;
