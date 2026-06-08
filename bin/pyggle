@@ -413,11 +413,14 @@ class Thumbnail:
             self._get_gps()
 
     def _get_caption(self):
-        try:
-            with open(f".captions/{self.filename}.txt", "r") as f:
-                self.html.set_caption(f.read())
-        except FileNotFoundError:
-            pass
+        if desc := self.exiftool.get("EXIF:ImageDescription", None):
+            self.html.set_caption(desc)
+        else:
+            try:
+                with open(f".captions/{self.filename}.txt", "r") as f:
+                    self.html.set_caption(f.read())
+            except FileNotFoundError:
+                pass
 
     def _get_datetime(self):
         dt = None
