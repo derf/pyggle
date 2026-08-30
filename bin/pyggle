@@ -811,7 +811,10 @@ def _make_thumbnail(args):
     if args.caption_to_exif and thumbnail.html.caption:
         exiftool_args.append(f"-File:Comment={thumbnail.html.caption}")
 
-    if args.exif_copyright:
+    if args.exif_artist and not thumbnail.exiftool.get("EXIF:Artist", None):
+        exiftool_args.append(f"-EXIF:Artist={args.exif_artist}")
+
+    if args.exif_copyright and not thumbnail.exiftool.get("EXIF:Copyright", None):
         exiftool_args.append(f"-EXIF:Copyright={args.exif_copyright}")
 
     if args.scrub_metadata:
@@ -858,10 +861,16 @@ if __name__ == "__main__":
         help="Enable options that alter the image files passed on the command line. The original can NOT be restored.",
     )
     parser.add_argument(
+        "--exif-artist",
+        metavar="STRING",
+        type=str,
+        help="Set EXIF artist if unset (IN-PLACE EDIT)",
+    )
+    parser.add_argument(
         "--exif-copyright",
         metavar="STRING",
         type=str,
-        help="Set EXIF copyright (IN-PLACE EDIT)",
+        help="Set EXIF copyright if unset (IN-PLACE EDIT)",
     )
     parser.add_argument(
         "--group",
