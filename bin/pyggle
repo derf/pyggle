@@ -709,6 +709,7 @@ def write_gallery(
     this_file=None,
     prev_file=None,
     next_file=None,
+    footer_buf=None,
 ):
 
     if prev_file or next_file:
@@ -737,6 +738,10 @@ def write_gallery(
             nav_buf += f'<a href="{next_file}.html">{next_file}</a>\n'
         nav_buf += "</div>"
         file_buf += nav_buf
+
+    if footer_buf:
+        file_buf += """<div class="image-list-end"></div>\n"""
+        file_buf += footer_buf
 
     with open(f"{base_dir}/share/html_end", "r") as f:
         file_buf += f.read()
@@ -868,6 +873,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__
+    )
+    parser.add_argument(
+        "--add-copyright-footer",
+        action="store_true",
+        help="Add footer with copyright information on indivdual files",
     )
     parser.add_argument(
         "--caption-to-exif",
@@ -1016,6 +1026,22 @@ if __name__ == "__main__":
             sorted(thumbnails, key=lambda t: t.exif_dt, reverse=args.reverse)
         )
 
+    if args.add_copyright_footer:
+        copyright_set = set()
+        for thumbnail in thumbnails:
+            copyright_set.add((thumbnail.html.artist, thumbnail.html.licence))
+        footer_buf = """<ul class="footer">\n"""
+        if len(copyright_set) == 1:
+            artist, licence = copyright_set.pop()
+            footer_buf += f"""<li>© {artist}, {licence}</li>\n"""
+        else:
+            footer_buf += f"""<li>Copyright: see individual files</li>\n"""
+            for artist, licence in sorted(copyright_set):
+                footer_buf += f"""<li>© {artist}, {licence}</li>\n"""
+        footer_buf += "</ul>\n"
+    else:
+        footer_buf = None
+
     if args.with_detail_page:
         for thumbnail in thumbnails:
             with open(f"{base_dir}/share/html_detail_start", "r") as f:
@@ -1035,7 +1061,9 @@ if __name__ == "__main__":
             for thumbnail in thumbnails:
                 thumbnail.to_detail_html(detail_html_start, detail_html_end)
 
-    write_gallery(html_buf, "index.html", thumbnails, group=args.group)
+    write_gallery(
+        html_buf, "index.html", thumbnails, group=args.group, footer_buf=footer_buf
+    )
 
     if args.with_nominatim:
         with open(".thumbnails/location_cache.json", "w") as f:
