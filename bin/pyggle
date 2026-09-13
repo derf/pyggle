@@ -381,10 +381,6 @@ class Thumbnail:
                     except FileNotFoundError:
                         pass
 
-        if args.with_detail_page and 0:
-            self.average_color = im.resize((1, 1)).getpixel((0, 0))
-            self.luminance = im.convert("L").getpixel((0, 0))
-
         self.html = ImageHTML()
 
         self._get_caption()
