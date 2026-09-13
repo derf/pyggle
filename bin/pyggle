@@ -261,7 +261,9 @@ class ImageHTML:
         if self.focus_mode:
             buf += f"<tr><th>Focus</th><td>{self.focus_mode}</td></tr>\n"
         if self.subject_distance:
-            buf += f"<tr><th>Subject Distance</th><td>{self.subject_distance}</td></tr>\n"
+            buf += (
+                f"<tr><th>Subject Distance</th><td>{self.subject_distance}</td></tr>\n"
+            )
         if self.focus_distance:
             buf += f"<tr><th>Focus distance</th><td>{self.focus_distance}</td></tr>\n"
         if self.flash:
