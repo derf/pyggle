@@ -108,7 +108,6 @@ class ImageHTML:
         self.caption = caption
 
     def set_copyright(self, licence, artist):
-        print(f"set_copyright({licence}, {artist})")
         self.licence = licence
         self.artist = artist
         if licence and artist:
