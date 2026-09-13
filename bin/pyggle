@@ -90,6 +90,7 @@ class ImageHTML:
         self.caption = None
 
         self.ev = None
+        self.copyright_str = None
         self.exposure = None
         self.exposure_mode = None
         self.exposure_program = None
@@ -105,6 +106,15 @@ class ImageHTML:
 
     def set_caption(self, caption):
         self.caption = caption
+
+    def set_copyright(self, licence, artist):
+        print(f"set_copyright({licence}, {artist})")
+        self.licence = licence
+        self.artist = artist
+        if licence and artist:
+            self.copyright_str = (
+                f"""<span class="copyright">{artist}, {licence}</span>"""
+            )
 
     def set_datetime(self, dt):
         self.datetime = dt.strftime("""<span class="datetime">%d.%m.%Y %H:%M</span>""")
@@ -268,6 +278,8 @@ class ImageHTML:
             buf += f"<tr><th>Focus distance</th><td>{self.focus_distance}</td></tr>\n"
         if self.flash:
             buf += f"<tr><th>Flash</th><td>{self.flash}</td></tr>\n"
+        if self.copyright_str:
+            buf += f"<tr><th>Copyright</th><td>{self.copyright_str}</td></tr>\n"
         if self.software:
             buf += f"<tr><th>Software</th><td>{self.software}</td></tr>\n"
         buf += "</table></p></div>\n"
@@ -284,6 +296,8 @@ class Thumbnail:
         with_gps=False,
         group_key_template=None,
         file_key_template=None,
+        artist_default=None,
+        copyright_default=None,
         have_thumbnail=dict(),
     ):
         self.filename = filename
@@ -293,6 +307,8 @@ class Thumbnail:
         self.gps = None
         self.group_key = None
         self.file_key = None
+        self.artist_default = artist_default
+        self.copyright_default = copyright_default
 
         self.kept_thumbnails = list()
 
@@ -445,6 +461,13 @@ class Thumbnail:
             self.html.set_datetime(dt)
 
     def _get_details(self):
+        self.html.set_copyright(
+            self.exiftool.get("EXIF:Copyright", self.copyright_default)
+            or self.copyright_default,
+            self.exiftool.get("EXIF:Artist", self.artist_default)
+            or self.artist_default,
+        )
+
         try:
             self.html.set_flash(self.exif_tag["EXIF Flash"])
         except KeyError:
@@ -787,6 +810,8 @@ def _make_thumbnail(args):
         size=args.size,
         group_key_template=args.group,
         file_key_template=args.group_files,
+        artist_default=args.exif_artist,
+        copyright_default=args.exif_copyright,
         **thumb_arg,
     )
 
